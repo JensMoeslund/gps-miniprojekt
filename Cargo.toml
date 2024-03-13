@@ -1,0 +1,42 @@
+[package]
+name = "gps-miniprojekt"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# General dependencies
+cortex-m = {version = "0.7.3", features = ["critical-section-single-core"]} # Cortex-M core
+stm32f4xx-hal = {version = "0.20.0", features = ["stm32f446", "rtic2"]} # HAL for STM32F4xx devices
+
+# knurling-rs dependencies (learn more at https://knurling.ferrous-systems.com/)
+defmt = { version = "0.3.6", features = ["encoding-rzcobs"] } # Logging framework
+defmt-brtt = {version = "0.1.1", features = ["rtt"] } # Enables logging over RTT
+panic-probe = { version = "0.3.1", features = ["print-defmt"] } # Panic handler using probe-rs / defmt
+
+# Real-Time dependencies & tools
+rtic = { version = "2.1.0", features = ["thumbv7-backend"] } # RTIC framework for concurrency
+rtic-monotonics = {version = "1.5.0",features = ["cortex-m-systick", "systick-64bit"] }  # Monotonic timer for RTIC
+fugit = {version = "0.3.7", features = ["defmt"] } # Duration and time handling
+
+
+############################################
+# Optional dependencies to consider adding #
+############################################
+
+# Heapless is a collection of data structures that don't require dynamic memory allocation
+# E.g. `heapless::Vec<u8, 32>` is a vector with a maximum capacity of 32 u8 elements
+heapless = "0.8.0"
+
+# Panic handler if you're using a different debugger
+# panic-halt = "0.2.0"
+
+# CAN support for STM32F4xx devices (requires the 'can' feature in stm32f4xx-hal)
+# The unstable-defmt feature derives defmt Format traits for the CAN types
+# bxcan = { version = "0.7", features = ["unstable-defmt"] }
+
+# For unit testing with defmt
+# [dev-dependencies]
+# defmt-test = "0.3.1"
+

@@ -1,0 +1,4 @@
+[toolchain]
+channel = "nightly"
+components = ["rust-analyzer"]
+targets = ["thumbv7em-none-eabihf"]
