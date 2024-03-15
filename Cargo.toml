@@ -32,6 +32,9 @@ heapless = "0.8.0"
 # Panic handler if you're using a different debugger
 # panic-halt = "0.2.0"
 
+# NMEA support for GPS modules
+nmea = {version = "0.6.0", default-features = false}
+
 # CAN support for STM32F4xx devices (requires the 'can' feature in stm32f4xx-hal)
 # The unstable-defmt feature derives defmt Format traits for the CAN types
 # bxcan = { version = "0.7", features = ["unstable-defmt"] }

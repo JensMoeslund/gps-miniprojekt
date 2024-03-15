@@ -10,7 +10,7 @@ use stm32f4xx_hal::{
     prelude::*,
 };
 
-#[rtic::app(device = stm32f4xx_hal::pac, dispatchers = [USART3])]
+#[rtic::app(device = stm32f4xx_hal::pac, dispatchers = [USART3,SPI1])]
 mod app {
 
     use core::u8;
@@ -22,7 +22,9 @@ mod app {
     // Holds the shared resources (used by multiple tasks)
     // Needed even if we don't use it
     #[shared]
-    struct Shared {}
+    struct Shared {
+        cmd_buffer: heapless::String<82>,
+    }
 
     // Holds the local resources (used by a single task)
     // Needed even if we don't use it
@@ -30,7 +32,8 @@ mod app {
     struct Local {
         led: PA5<Output<PushPull>>,
         usart2: Serial<USART1>,
-        buf: heapless::String<82>,
+        usart_input_buf: heapless::String<82>,
+        nmea_struct: nmea::Nmea,
     }
 
     // The init function is called in the beginning of the program
@@ -44,7 +47,9 @@ mod app {
         let usart2 = _device.USART1;
         let clocks = gps_miniprojekt::configure_clock!(_device, _core, 84.MHz());
 
-        let buf = heapless::String::new();
+        let usart_input_buf = heapless::String::new();
+        let cmd_buffer = heapless::String::new();
+        let nmea_struct = nmea::Nmea::default();
 
         // Set up the LED. On the Nucleo-F446RE it's connected to pin PA5.
         let gpioa = _device.GPIOA.split();
@@ -65,7 +70,15 @@ mod app {
 
         defmt::info!("Init done!");
         blink::spawn().ok();
-        (Shared {}, Local { led, usart2, buf })
+        (
+            Shared { cmd_buffer },
+            Local {
+                led,
+                usart2,
+                usart_input_buf,
+                nmea_struct,
+            },
+        )
     }
 
     // The idle function is called when there is nothing else to do
@@ -76,25 +89,39 @@ mod app {
         }
     }
 
-    #[task(binds = USART1, priority = 2, local = [usart2,buf])]
+    #[task(binds = USART1, priority = 2, local = [usart2,usart_input_buf],shared = [cmd_buffer])]
     fn usart2(ctx: usart2::Context) {
         // defmt::debug!("USART2 interrupt");
         let usart2 = ctx.local.usart2;
-        let buf = ctx.local.buf;
+        let usart_input_buf = ctx.local.usart_input_buf;
+        let mut cmd_buf = ctx.shared.cmd_buffer;
         while let Ok(byte) = usart2.read() {
             match byte as char {
-                '\r'|'\n' => {
-                    defmt::debug!("Received: {}", buf.as_str());
-                    buf.clear();
+                '\r' | '\n' => {
+                    defmt::debug!("Received: {}", usart_input_buf.as_str());
+                    cmd_buf.lock(|b| b.push_str(usart_input_buf.as_str()).unwrap());
+                    usart_input_buf.clear();
+                    nmea_decode::spawn().ok();
                 }
                 _ => {
-                    buf.push(byte as char).unwrap();
+                    usart_input_buf.push(byte as char).unwrap();
                 }
             }
         }
         // let (mut tx, mut rx) = usart2.split();
         // let byte = rx.read().unwrap();
         // tx.write(byte).unwrap();
+    }
+
+    #[task(priority = 2,local=[nmea_struct],shared = [cmd_buffer])]
+    async fn nmea_decode(ctx: nmea_decode::Context) {
+        let mut buf = ctx.shared.cmd_buffer;
+        // let nmea_struct = ctx.local.nmea_struct;
+        defmt::info!("NMEA decode");
+        // let parse_result = nmea::parse_str(buf.lock(|b| b.as_str())).unwrap();
+        defmt::debug!("NMEA: {:?}", buf.lock(|b| b.as_str()));
+        buf.lock(|b| b.clear());
+        // nmea_struct.parse(buf.lock(|b| &b.pop().unwrap())).unwrap();
     }
 
     // The task functions are called by the scheduler
