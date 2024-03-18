@@ -16,6 +16,7 @@ mod app {
     use core::u8;
 
     use super::*;
+    // use alloc::string::ToString;
     use defmt::info;
     use stm32f4xx_hal::{pac::USART1, serial::Serial};
 
@@ -116,12 +117,27 @@ mod app {
     #[task(priority = 2,local=[nmea_struct],shared = [cmd_buffer])]
     async fn nmea_decode(ctx: nmea_decode::Context) {
         let mut buf = ctx.shared.cmd_buffer;
-        // let nmea_struct = ctx.local.nmea_struct;
+        let _nmea_struct = ctx.local.nmea_struct;
+
         defmt::info!("NMEA decode");
-        // let parse_result = nmea::parse_str(buf.lock(|b| b.as_str())).unwrap();
-        defmt::debug!("NMEA: {:?}", buf.lock(|b| b.as_str()));
+        // let mut teststring;
+        // buf.lock(|b| teststring = b.clone());
+        // defmt::debug!("NMEA: {:?}",teststring.as_str());
+        // buf.lock(|b| defmt::debug!("NMEA: {:?}",b.as_str()));
+        let mut test = buf.lock(|b| b.clone());
+        defmt::debug!("NMEA: {:?}", test.as_str());
+        // match nmea_struct.parse(test.as_str()) {
+        //     Ok(_) => {
+        //         defmt::debug!("NMEA: {:?}", nmea_struct.latitude.unwrap());
+        //     }
+        //     Err(_) => return ,
+        // }
+        test.clear();
+        // nmea_struct.parse(test.as_str()).unwrap();
+        // test.unwrap();
         buf.lock(|b| b.clear());
-        // nmea_struct.parse(buf.lock(|b| &b.pop().unwrap())).unwrap();
+        // defmt::debug!("Latitude: {:?}",nmea_struct.latitude.unwrap());
+        // (buf.lock(|b| &b.pop().unwrap())).unwrap();
     }
 
     // The task functions are called by the scheduler
