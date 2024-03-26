@@ -29,6 +29,9 @@ fugit = {version = "0.3.7", features = ["defmt"] } # Duration and time handling
 # E.g. `heapless::Vec<u8, 32>` is a vector with a maximum capacity of 32 u8 elements
 heapless = "0.8.0"
 
+# Error handling
+snafu = {version = "0.8.2", default-features = false, features = ["rust_1_65"]}
+
 # Panic handler if you're using a different debugger
 # panic-halt = "0.2.0"
 

@@ -4,6 +4,7 @@
 #![feature(type_alias_impl_trait)]
 
 use gps_miniprojekt as _; // global logger + panicking-behavior
+use gps_miniprojekt::NmeaReciever;
 use rtic_monotonics::{systick::Systick, Monotonic};
 use stm32f4xx_hal::{
     gpio::{gpioa::PA5, Output, PushPull},
@@ -18,6 +19,9 @@ mod app {
     use super::*;
     // use alloc::string::ToString;
     use defmt::info;
+    use gps_miniprojekt::Error::SentenceNotFinished;
+    use heapless::String;
+    use nmea::Nmea;
     use stm32f4xx_hal::{pac::USART1, serial::Serial};
 
     // Holds the shared resources (used by multiple tasks)
@@ -25,6 +29,7 @@ mod app {
     #[shared]
     struct Shared {
         cmd_buffer: heapless::String<82>,
+        nmea_struct: nmea::Nmea,
     }
 
     // Holds the local resources (used by a single task)
@@ -33,8 +38,7 @@ mod app {
     struct Local {
         led: PA5<Output<PushPull>>,
         usart2: Serial<USART1>,
-        usart_input_buf: heapless::String<82>,
-        nmea_struct: nmea::Nmea,
+        nmea_reciever: NmeaReciever,
     }
 
     // The init function is called in the beginning of the program
@@ -47,10 +51,6 @@ mod app {
         let mut _core: cortex_m::Peripherals = ctx.core;
         let usart2 = _device.USART1;
         let clocks = gps_miniprojekt::configure_clock!(_device, _core, 84.MHz());
-
-        let usart_input_buf = heapless::String::new();
-        let cmd_buffer = heapless::String::new();
-        let nmea_struct = nmea::Nmea::default();
 
         // Set up the LED. On the Nucleo-F446RE it's connected to pin PA5.
         let gpioa = _device.GPIOA.split();
@@ -72,12 +72,14 @@ mod app {
         defmt::info!("Init done!");
         blink::spawn().ok();
         (
-            Shared { cmd_buffer },
+            Shared {
+                cmd_buffer: String::new(),
+                nmea_struct: Nmea::default(),
+            },
             Local {
                 led,
                 usart2,
-                usart_input_buf,
-                nmea_struct,
+                nmea_reciever: NmeaReciever::new(),
             },
         )
     }
@@ -90,54 +92,51 @@ mod app {
         }
     }
 
-    #[task(binds = USART1, priority = 2, local = [usart2,usart_input_buf],shared = [cmd_buffer])]
+    #[task(binds = USART1, priority = 2, local = [usart2, nmea_reciever], shared = [cmd_buffer])]
     fn usart2(ctx: usart2::Context) {
         // defmt::debug!("USART2 interrupt");
         let usart2 = ctx.local.usart2;
-        let usart_input_buf = ctx.local.usart_input_buf;
+        let reciever = ctx.local.nmea_reciever;
         let mut cmd_buf = ctx.shared.cmd_buffer;
         while let Ok(byte) = usart2.read() {
-            match byte as char {
-                '\r' | '\n' => {
-                    defmt::debug!("Received: {}", usart_input_buf.as_str());
-                    cmd_buf.lock(|b| b.push_str(usart_input_buf.as_str()).unwrap());
-                    usart_input_buf.clear();
+            match reciever.handle_byte(byte as char) {
+                Ok(sentence) => {
+                    defmt::info!("Sentence: {:?}", sentence.as_str());
+                    cmd_buf.lock(|b| b.push_str(sentence.as_str()).unwrap());
                     nmea_decode::spawn().ok();
                 }
-                _ => {
-                    usart_input_buf.push(byte as char).unwrap();
+                Err(SentenceNotFinished) => continue,
+                Err(e) => {
+                    defmt::error!("Error: {}", e);
+                    break;
                 }
             }
         }
-        // let (mut tx, mut rx) = usart2.split();
-        // let byte = rx.read().unwrap();
-        // tx.write(byte).unwrap();
     }
 
-    #[task(priority = 2,local=[nmea_struct],shared = [cmd_buffer])]
+    #[task(priority = 2, shared = [nmea_struct, cmd_buffer])]
     async fn nmea_decode(ctx: nmea_decode::Context) {
         let mut buf = ctx.shared.cmd_buffer;
-        let _nmea_struct = ctx.local.nmea_struct;
+        let mut nmea_struct = ctx.shared.nmea_struct;
 
         defmt::info!("NMEA decode");
-        // let mut teststring;
-        // buf.lock(|b| teststring = b.clone());
-        // defmt::debug!("NMEA: {:?}",teststring.as_str());
-        // buf.lock(|b| defmt::debug!("NMEA: {:?}",b.as_str()));
-        let mut test = buf.lock(|b| b.clone());
-        defmt::debug!("NMEA: {:?}", test.as_str());
-        // match nmea_struct.parse(test.as_str()) {
-        //     Ok(_) => {
-        //         defmt::debug!("NMEA: {:?}", nmea_struct.latitude.unwrap());
-        //     }
-        //     Err(_) => return ,
-        // }
-        test.clear();
-        // nmea_struct.parse(test.as_str()).unwrap();
-        // test.unwrap();
-        buf.lock(|b| b.clear());
-        // defmt::debug!("Latitude: {:?}",nmea_struct.latitude.unwrap());
-        // (buf.lock(|b| &b.pop().unwrap())).unwrap();
+        let local_sentence = buf.lock(|b| {
+            let sentence = b.clone();
+            b.clear();
+            sentence
+        });
+        defmt::debug!("NMEA: {:?}", local_sentence.as_str());
+
+        nmea_struct.lock(
+            |nmea_struct| match nmea_struct.parse(local_sentence.as_str()) {
+                Ok(sentence_type) => {
+                    defmt::info!("NMEA sentence type: {:?}", sentence_type.as_str());
+                }
+                Err(_) => {
+                    defmt::error!("Failed to parse NMEA sentence");
+                }
+            },
+        )
     }
 
     // The task functions are called by the scheduler
