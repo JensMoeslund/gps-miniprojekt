@@ -1,6 +1,6 @@
 #![no_main]
 #![no_std]
-#![deny(warnings)]
+// #![deny(warnings)]
 #![feature(type_alias_impl_trait)]
 
 use gps_miniprojekt as _; // global logger + panicking-behavior
@@ -39,6 +39,8 @@ mod app {
         led: PA5<Output<PushPull>>,
         usart2: Serial<USART1>,
         nmea_reciever: NmeaReciever,
+        sender: rtic_sync::channel::Sender<'static, char, 10>,
+        receiver: rtic_sync::channel::Receiver<'static, char, 10>,
     }
 
     // The init function is called in the beginning of the program
@@ -59,6 +61,8 @@ mod app {
         let tx = gpioa.pa9.into_alternate::<7>();
         let rx = gpioa.pa10.into_alternate::<7>();
 
+        let (sender, receiver) = rtic_sync::make_channel!(char,10);
+
         let mut usart2 = usart2
             .serial(
                 (tx, rx),
@@ -70,7 +74,8 @@ mod app {
         usart2.listen(stm32f4xx_hal::serial::Event::RxNotEmpty);
 
         defmt::info!("Init done!");
-        blink::spawn().ok();
+        nmea_handler::spawn().ok();
+        // blink::spawn().ok();
         (
             Shared {
                 cmd_buffer: String::new(),
@@ -80,6 +85,8 @@ mod app {
                 led,
                 usart2,
                 nmea_reciever: NmeaReciever::new(),
+                sender,
+                receiver,
             },
         )
     }
@@ -92,29 +99,39 @@ mod app {
         }
     }
 
-    #[task(binds = USART1, priority = 2, local = [usart2, nmea_reciever], shared = [cmd_buffer])]
-    fn usart2(ctx: usart2::Context) {
-        // defmt::debug!("USART2 interrupt");
+    #[task(binds = USART1,priority=10, local = [usart2,sender])]
+    fn usart_input_handler(ctx: usart_input_handler::Context) {
         let usart2 = ctx.local.usart2;
+        let sender = ctx.local.sender;
+        while let Ok(byte) = usart2.read() {
+            sender.try_send(byte as char).unwrap();
+        }
+    }
+
+    #[task(priority = 3, local = [nmea_reciever,receiver], shared = [cmd_buffer])]
+    async fn nmea_handler(ctx: nmea_handler::Context){
         let reciever = ctx.local.nmea_reciever;
         let mut cmd_buf = ctx.shared.cmd_buffer;
-        while let Ok(byte) = usart2.read() {
-            match reciever.handle_byte(byte as char) {
-                Ok(sentence) => {
-                    defmt::info!("Sentence: {:?}", sentence.as_str());
-                    cmd_buf.lock(|b| b.push_str(sentence.as_str()).unwrap());
-                    nmea_decode::spawn().ok();
-                }
-                Err(SentenceNotFinished) => continue,
-                Err(e) => {
-                    defmt::error!("Error: {}", e);
-                    break;
+        let consumer = ctx.local.receiver;
+        loop {
+            while let Ok(byte) = consumer.recv().await {
+                match reciever.handle_byte(byte as char) {
+                    Ok(sentence) => {
+                        defmt::info!("Sentence: {:?}", sentence.as_str());
+                        cmd_buf.lock(|b| b.push_str(sentence.as_str()).unwrap());
+                        nmea_decode::spawn().ok();
+                    }
+                    Err(SentenceNotFinished) => continue,
+                    Err(e) => {
+                        defmt::error!("Error: {}", e);
+                        break;
+                    }
                 }
             }
         }
     }
 
-    #[task(priority = 2, shared = [nmea_struct, cmd_buffer])]
+    #[task(priority = 1, shared = [nmea_struct, cmd_buffer])]
     async fn nmea_decode(ctx: nmea_decode::Context) {
         let mut buf = ctx.shared.cmd_buffer;
         let mut nmea_struct = ctx.shared.nmea_struct;
@@ -132,9 +149,48 @@ mod app {
                 Ok(sentence_type) => {
                     defmt::info!("NMEA sentence type: {:?}", sentence_type.as_str());
                 }
-                Err(_) => {
-                    defmt::error!("Failed to parse NMEA sentence");
-                }
+                Err(e) => match e {
+                    nmea::Error::Utf8Decoding => {
+                        defmt::error!("The provided input was not a valid UTF-8 string")
+                    }
+                    nmea::Error::ASCII => {
+                        defmt::error!("Provided input includes non-ASCII characters")
+                    }
+                    nmea::Error::ChecksumMismatch { calculated, found } => defmt::error!(
+                        "Checksum Mismatch(calculated = {}, found = {})",
+                        calculated,
+                        found
+                    ),
+                    nmea::Error::WrongSentenceHeader {
+                        expected: _,
+                        found: _,
+                    } => defmt::error!("Wrong Sentence Header"),
+                    nmea::Error::UnknownGnssType(_) => defmt::error!("Unknown GNSS type )"),
+                    nmea::Error::ParsingError(_) => defmt::error!("Parse error:"),
+                    nmea::Error::SentenceLength(_) => defmt::error!(
+                        "The sentence was too long to be parsed, current limit is characters"
+                    ),
+                    nmea::Error::ParameterLength {
+                        max_length: _,
+                        parameter_length: _,
+                    } => defmt::error!("Parameter was too long to fit into string, max length is"),
+                    nmea::Error::Unsupported(_) => defmt::error!("Unsupported NMEA sentence"),
+                    nmea::Error::Unknown(_) => {
+                        defmt::error!("Unknown for the crate NMEA sentence '")
+                    }
+                    nmea::Error::EmptyNavConfig => defmt::error!(
+                        "The provided navigation configuration was empty and thus invalid"
+                    ),
+                    nmea::Error::InvalidGsvSentenceNum => {
+                        defmt::error!("Invalid sentence number field in nmea sentence of type GSV")
+                    }
+                    nmea::Error::UnknownTalkerId { expected, found } => defmt::error!(
+                        "Unknown talker id (expected = '{}', found = '{}')",
+                        expected,
+                        found
+                    ),
+                    nmea::Error::DisabledSentence => defmt::error!("DisabledSentence"),
+                },
             },
         )
     }

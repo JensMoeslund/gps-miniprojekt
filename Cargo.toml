@@ -18,6 +18,7 @@ panic-probe = { version = "0.3.1", features = ["print-defmt"] } # Panic handler 
 # Real-Time dependencies & tools
 rtic = { version = "2.1.0", features = ["thumbv7-backend"] } # RTIC framework for concurrency
 rtic-monotonics = {version = "1.5.0",features = ["cortex-m-systick", "systick-64bit"] }  # Monotonic timer for RTIC
+rtic-sync = "1.3.0" # Synchronization primitives for RTIC
 fugit = {version = "0.3.7", features = ["defmt"] } # Duration and time handling
 
 
@@ -36,7 +37,7 @@ snafu = {version = "0.8.2", default-features = false, features = ["rust_1_65"]}
 # panic-halt = "0.2.0"
 
 # NMEA support for GPS modules
-nmea = {version = "0.6.0", default-features = false}
+nmea = {version = "0.6.0", default-features = false,features = ["all-sentences"]}
 
 # CAN support for STM32F4xx devices (requires the 'can' feature in stm32f4xx-hal)
 # The unstable-defmt feature derives defmt Format traits for the CAN types

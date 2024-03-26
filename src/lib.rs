@@ -19,12 +19,12 @@ pub enum Error {
     #[snafu(display("Buffer full, cannot push byte {}", byte))]
     BufferFull { byte: char },
 
-    #[snafu(display("Invalid utf8 string"))]
-    InvalidUtf8String,
-
     #[snafu(display("NMEA sentence not yet finished"))]
     // Used as a return type for the handle_byte method to support while let loops
     SentenceNotFinished,
+
+    #[snafu(display("Sentence not started"))]
+    SentenceNotStarted{byte: char},
 }
 
 // Reciever finite state machine
@@ -33,6 +33,7 @@ pub enum Error {
 #[derive(Format, Debug, Clone, Copy)]
 pub enum NmeaRecieverState {
     Clear,      // Nothing recieved yet
+    StartRecieved, // Start of sentence recieved
     Recieving,  // Recieving a sentence
     CrRecieved, // Carriage return recieved
     LfRecieved, // Line feed recieved (end of sentence)
@@ -47,10 +48,22 @@ impl NmeaRecieverState {
     fn clear(&mut self) {
         *self = NmeaRecieverState::Clear;
     }
+    fn start_recieved(&mut self) -> Result<(), Error> {
+        match self {
+            NmeaRecieverState::Clear => {
+                *self = NmeaRecieverState::StartRecieved;
+                Ok(())
+            }
+            _ => Err(Error::InvalidTransition {
+                from: *self,
+                to: NmeaRecieverState::StartRecieved,
+            }),
+        }
+    }
 
     fn recieving(&mut self) -> Result<(), Error> {
         match self {
-            NmeaRecieverState::Clear => {
+            NmeaRecieverState::StartRecieved => {
                 *self = NmeaRecieverState::Recieving;
                 Ok(())
             }
@@ -107,6 +120,9 @@ impl NmeaReciever {
         self.state.clear();
         self.buffer.clear();
     }
+    fn start_recieved(&mut self) -> Result<(), Error> {
+        self.state.start_recieved()
+    }
 
     fn recieving(&mut self) -> Result<(), Error> {
         self.state.recieving()
@@ -129,7 +145,18 @@ impl NmeaReciever {
 
     pub fn handle_byte(&mut self, byte: char) -> Result<String<BUF_LEN>, Error> {
         match self.state {
-            NmeaRecieverState::Clear => {
+            NmeaRecieverState::Clear => match byte {
+                '$' => {
+                    self.start_recieved()?;
+                    self.push(byte)?;
+                    Err(Error::SentenceNotFinished)
+                }
+                _ => {
+                    self.clear();
+                    Err(Error::SentenceNotStarted{byte})
+                }
+            }
+            NmeaRecieverState::StartRecieved => {
                 self.recieving()?;
                 self.push(byte)?;
                 Err(Error::SentenceNotFinished)
@@ -137,6 +164,12 @@ impl NmeaReciever {
             NmeaRecieverState::Recieving => match byte {
                 '\r' => {
                     self.cr_recieved()?;
+                    // self.push(byte)?;
+                    Err(Error::SentenceNotFinished)
+                }
+                '$' => {
+                    self.clear();
+                    self.start_recieved()?;
                     self.push(byte)?;
                     Err(Error::SentenceNotFinished)
                 }
@@ -148,10 +181,16 @@ impl NmeaReciever {
             NmeaRecieverState::CrRecieved => match byte {
                 '\n' => {
                     self.lf_recieved()?;
-                    self.push(byte)?;
+                    // self.push(byte)?;
                     let sentence = self.buffer.clone();
                     self.clear();
                     Ok(sentence)
+                }
+                '$' => {
+                    self.clear();
+                    self.start_recieved()?;
+                    self.push(byte)?;
+                    Err(Error::SentenceNotFinished)
                 }
                 _ => {
                     self.push(byte)?;
