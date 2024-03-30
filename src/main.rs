@@ -37,7 +37,7 @@ mod app {
     #[local]
     struct Local {
         led: PA5<Output<PushPull>>,
-        usart2: Serial<USART1>,
+        serial: Serial<USART1>,
         nmea_reciever: NmeaReciever,
         sender: rtic_sync::channel::Sender<'static, char, 10>,
         receiver: rtic_sync::channel::Receiver<'static, char, 10>,
@@ -63,7 +63,7 @@ mod app {
         let rx = gpioa.pa10.into_alternate::<7>();
 
         let (sender, receiver) = rtic_sync::make_channel!(char, 10);
-        let mut usart2 = usart2
+        let mut serial = usart2
             .serial(
                 (tx, rx),
                 stm32f4xx_hal::serial::config::Config::default().baudrate(9600.bps()),
@@ -71,7 +71,7 @@ mod app {
             )
             .unwrap();
         // usart2.bwrite_all("Hello, world!\n".as_bytes()).unwrap();
-        usart2.listen(stm32f4xx_hal::serial::Event::RxNotEmpty);
+        serial.listen(stm32f4xx_hal::serial::Event::RxNotEmpty);
 
         defmt::info!("Init done!");
         nmea_handler::spawn().ok();
@@ -83,7 +83,7 @@ mod app {
             },
             Local {
                 led,
-                usart2,
+                serial,
                 nmea_reciever: NmeaReciever::new(),
                 sender,
                 receiver,
@@ -99,11 +99,11 @@ mod app {
         }
     }
 
-    #[task(binds = USART1, priority=10, local = [usart2,sender])]
+    #[task(binds = USART1, priority=10, local = [serial,sender])]
     fn usart_input_handler(ctx: usart_input_handler::Context) {
-        let usart2 = ctx.local.usart2;
+        let serial = ctx.local.serial;
         let sender = ctx.local.sender;
-        while let Ok(byte) = usart2.read() {
+        while let Ok(byte) = serial.read() {
             sender.try_send(byte as char).unwrap();
         }
     }
@@ -112,13 +112,13 @@ mod app {
     async fn nmea_handler(ctx: nmea_handler::Context) {
         let reciever = ctx.local.nmea_reciever;
         let mut cmd_buf = ctx.shared.cmd_buffer;
-        let consumer = ctx.local.receiver;
+        let queue = ctx.local.receiver;
         loop {
             // await here automatically defers the task after receiving a byte
-            while let Ok(byte) = consumer.recv().await {
+            while let Ok(byte) = queue.recv().await {
                 match reciever.handle_byte(byte as char) {
                     Ok(sentence) => {
-                        defmt::info!("Sentence: {:?}", sentence.as_str());
+                        defmt::debug!("Sentence: {}", sentence.as_str());
                         cmd_buf.lock(|b| b.push_str(sentence.as_str()).unwrap());
                         nmea_decode::spawn().ok();
                     }
