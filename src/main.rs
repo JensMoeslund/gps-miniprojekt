@@ -58,11 +58,11 @@ mod app {
         let gpioa = _device.GPIOA.split();
         let led = gpioa.pa5.into_push_pull_output();
 
+        // Set up the USART1 peripheral for the Nmea Reciever
         let tx = gpioa.pa9.into_alternate::<7>();
         let rx = gpioa.pa10.into_alternate::<7>();
 
-        let (sender, receiver) = rtic_sync::make_channel!(char,10);
-
+        let (sender, receiver) = rtic_sync::make_channel!(char, 10);
         let mut usart2 = usart2
             .serial(
                 (tx, rx),
@@ -99,7 +99,7 @@ mod app {
         }
     }
 
-    #[task(binds = USART1,priority=10, local = [usart2,sender])]
+    #[task(binds = USART1, priority=10, local = [usart2,sender])]
     fn usart_input_handler(ctx: usart_input_handler::Context) {
         let usart2 = ctx.local.usart2;
         let sender = ctx.local.sender;
@@ -109,11 +109,12 @@ mod app {
     }
 
     #[task(priority = 3, local = [nmea_reciever,receiver], shared = [cmd_buffer])]
-    async fn nmea_handler(ctx: nmea_handler::Context){
+    async fn nmea_handler(ctx: nmea_handler::Context) {
         let reciever = ctx.local.nmea_reciever;
         let mut cmd_buf = ctx.shared.cmd_buffer;
         let consumer = ctx.local.receiver;
         loop {
+            // await here automatically defers the task after receiving a byte
             while let Ok(byte) = consumer.recv().await {
                 match reciever.handle_byte(byte as char) {
                     Ok(sentence) => {
@@ -149,48 +150,10 @@ mod app {
                 Ok(sentence_type) => {
                     defmt::info!("NMEA sentence type: {:?}", sentence_type.as_str());
                 }
-                Err(e) => match e {
-                    nmea::Error::Utf8Decoding => {
-                        defmt::error!("The provided input was not a valid UTF-8 string")
-                    }
-                    nmea::Error::ASCII => {
-                        defmt::error!("Provided input includes non-ASCII characters")
-                    }
-                    nmea::Error::ChecksumMismatch { calculated, found } => defmt::error!(
-                        "Checksum Mismatch(calculated = {}, found = {})",
-                        calculated,
-                        found
-                    ),
-                    nmea::Error::WrongSentenceHeader {
-                        expected: _,
-                        found: _,
-                    } => defmt::error!("Wrong Sentence Header"),
-                    nmea::Error::UnknownGnssType(_) => defmt::error!("Unknown GNSS type )"),
-                    nmea::Error::ParsingError(_) => defmt::error!("Parse error:"),
-                    nmea::Error::SentenceLength(_) => defmt::error!(
-                        "The sentence was too long to be parsed, current limit is characters"
-                    ),
-                    nmea::Error::ParameterLength {
-                        max_length: _,
-                        parameter_length: _,
-                    } => defmt::error!("Parameter was too long to fit into string, max length is"),
-                    nmea::Error::Unsupported(_) => defmt::error!("Unsupported NMEA sentence"),
-                    nmea::Error::Unknown(_) => {
-                        defmt::error!("Unknown for the crate NMEA sentence '")
-                    }
-                    nmea::Error::EmptyNavConfig => defmt::error!(
-                        "The provided navigation configuration was empty and thus invalid"
-                    ),
-                    nmea::Error::InvalidGsvSentenceNum => {
-                        defmt::error!("Invalid sentence number field in nmea sentence of type GSV")
-                    }
-                    nmea::Error::UnknownTalkerId { expected, found } => defmt::error!(
-                        "Unknown talker id (expected = '{}', found = '{}')",
-                        expected,
-                        found
-                    ),
-                    nmea::Error::DisabledSentence => defmt::error!("DisabledSentence"),
-                },
+                Err(e) => {
+                    // This is very expensive, but we're not expecting many errors
+                    defmt::error!("Error: {}", defmt::Display2Format(&e));
+                }
             },
         )
     }

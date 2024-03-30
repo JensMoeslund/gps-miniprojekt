@@ -1,30 +1,53 @@
 #![no_std]
 
+use defmt::Format;
 use defmt_brtt as _; // global logger
 use fugit as _; // time units
 use panic_probe as _; // panic handler
-use snafu::prelude::*;
 use stm32f4xx_hal as _; // memory layout // time abstractions
-use defmt::Format;
 
 use heapless::String;
-#[derive(Format, Debug, Snafu)]
+#[derive(Debug)]
 pub enum Error {
-    #[snafu(display("Invalid reciever state transition from {:?} to {:?}", from, to))]
     InvalidTransition {
         from: NmeaRecieverState,
         to: NmeaRecieverState,
     },
 
-    #[snafu(display("Buffer full, cannot push byte {}", byte))]
-    BufferFull { byte: char },
+    BufferFull {
+        byte: char,
+    },
 
-    #[snafu(display("NMEA sentence not yet finished"))]
+    SentenceNotStarted {
+        byte: char,
+    },
+
     // Used as a return type for the handle_byte method to support while let loops
     SentenceNotFinished,
+}
 
-    #[snafu(display("Sentence not started"))]
-    SentenceNotStarted{byte: char},
+impl Format for Error {
+    fn format(&self, fmt: defmt::Formatter) {
+        match self {
+            Error::InvalidTransition { from, to } => {
+                defmt::write!(
+                    fmt,
+                    "Invalid reciever state transition from {:?} to {:?}",
+                    from,
+                    to
+                )
+            }
+            Error::BufferFull { byte } => {
+                defmt::write!(fmt, "Buffer full, cannot push byte {}", byte)
+            }
+            Error::SentenceNotStarted { byte } => {
+                defmt::write!(fmt, "Sentence not started with {}", byte)
+            }
+            Error::SentenceNotFinished => {
+                defmt::write!(fmt, "NMEA sentence not yet finished (continue reading)")
+            }
+        }
+    }
 }
 
 // Reciever finite state machine
@@ -32,11 +55,11 @@ pub enum Error {
 // an invalid transition will result in returning an Error::InvalidTransition.
 #[derive(Format, Debug, Clone, Copy)]
 pub enum NmeaRecieverState {
-    Clear,      // Nothing recieved yet
+    Clear,         // Nothing recieved yet
     StartRecieved, // Start of sentence recieved
-    Recieving,  // Recieving a sentence
-    CrRecieved, // Carriage return recieved
-    LfRecieved, // Line feed recieved (end of sentence)
+    Recieving,     // Recieving a sentence
+    CrRecieved,    // Carriage return recieved
+    LfRecieved,    // Line feed recieved (end of sentence)
 }
 
 //
@@ -142,7 +165,6 @@ impl NmeaReciever {
             .map_err(|_| Error::BufferFull { byte })
     }
 
-
     pub fn handle_byte(&mut self, byte: char) -> Result<String<BUF_LEN>, Error> {
         match self.state {
             NmeaRecieverState::Clear => match byte {
@@ -153,14 +175,22 @@ impl NmeaReciever {
                 }
                 _ => {
                     self.clear();
-                    Err(Error::SentenceNotStarted{byte})
+                    Err(Error::SentenceNotStarted { byte })
                 }
-            }
-            NmeaRecieverState::StartRecieved => {
-                self.recieving()?;
-                self.push(byte)?;
-                Err(Error::SentenceNotFinished)
-            }
+            },
+            NmeaRecieverState::StartRecieved => match byte {
+                '$' => {
+                    self.clear();
+                    self.start_recieved()?;
+                    self.push(byte)?;
+                    Err(Error::SentenceNotFinished)
+                }
+                _ => {
+                    self.recieving()?;
+                    self.push(byte)?;
+                    Err(Error::SentenceNotFinished)
+                }
+            },
             NmeaRecieverState::Recieving => match byte {
                 '\r' => {
                     self.cr_recieved()?;
@@ -208,7 +238,6 @@ impl NmeaReciever {
         }
     }
 }
-
 
 #[macro_export]
 macro_rules! configure_clock {
