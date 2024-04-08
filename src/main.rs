@@ -4,7 +4,7 @@
 #![feature(type_alias_impl_trait)]
 
 use gps_miniprojekt as _; // global logger + panicking-behavior
-use gps_miniprojekt::NmeaReciever;
+use gps_miniprojekt::{GnssLocation, NmeaReciever};
 use rtic_monotonics::{systick::Systick, Monotonic};
 use stm32f4xx_hal::{
     gpio::{gpioa::PA5, Output, PushPull},
@@ -21,7 +21,7 @@ mod app {
     use defmt::info;
     use gps_miniprojekt::Error::SentenceNotFinished;
     use heapless::String;
-    use nmea::Nmea;
+    use nmea::{sentences::gga, Nmea};
     use stm32f4xx_hal::{pac::USART1, serial::Serial};
 
     // Holds the shared resources (used by multiple tasks)
@@ -75,7 +75,7 @@ mod app {
 
         defmt::info!("Init done!");
         nmea_handler::spawn().ok();
-        // blink::spawn().ok();
+        gga_saver::spawn().ok();
         (
             Shared {
                 cmd_buffer: String::new(),
@@ -137,34 +137,38 @@ mod app {
         let mut buf = ctx.shared.cmd_buffer;
         let mut nmea_struct = ctx.shared.nmea_struct;
 
-        defmt::info!("NMEA decode");
+        defmt::debug!("NMEA decode");
         let local_sentence = buf.lock(|b| {
             let sentence = b.clone();
             b.clear();
             sentence
         });
-        defmt::debug!("NMEA: {:?}", local_sentence.as_str());
+        defmt::trace!("NMEA: {:?}", local_sentence.as_str());
 
         nmea_struct.lock(
             |nmea_struct| match nmea_struct.parse(local_sentence.as_str()) {
                 Ok(sentence_type) => {
-                    defmt::info!("NMEA sentence type: {:?}", sentence_type.as_str());
+                    defmt::debug!("NMEA sentence type: {:?}", sentence_type.as_str());
                 }
                 Err(e) => {
                     // This is very expensive, but we're not expecting many errors
                     defmt::error!("Error: {}", defmt::Display2Format(&e));
                 }
             },
-        )
+        );
     }
 
     // The task functions are called by the scheduler
-    #[task(local = [led], priority = 1)]
-    async fn blink(ctx: blink::Context) {
+    #[task(shared = [nmea_struct], priority = 1)]
+    async fn gga_saver(ctx: gga_saver::Context) {
+        let mut nmea_struct = ctx.shared.nmea_struct;
+
         loop {
             let t = Systick::now();
-            ctx.local.led.toggle();
-            defmt::info!("Blink!");
+            defmt::info!(
+                "{:?}",
+                nmea_struct.lock(|nmea_struct| GnssLocation::from(nmea_struct))
+            );
             Systick::delay_until(t + 1.secs()).await;
         }
     }

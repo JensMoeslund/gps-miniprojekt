@@ -2,10 +2,12 @@
 
 use defmt::Format;
 use defmt_brtt as _; // global logger
-use fugit as _; // time units
+use fugit as _;
+use nmea::Nmea;
+// time units
 use panic_probe as _; // panic handler
 use stm32f4xx_hal as _; // memory layout // time abstractions
-
+pub mod ms5611;
 use heapless::String;
 #[derive(Debug)]
 pub enum Error {
@@ -235,6 +237,21 @@ impl NmeaReciever {
                     to: NmeaRecieverState::Clear,
                 })
             }
+        }
+    }
+}
+#[derive(Format)]
+pub struct GnssLocation {
+    latitude: Option<f64>,
+    longitude: Option<f64>,
+    altitude: Option<f32>,
+}
+impl From<&mut Nmea> for GnssLocation {
+    fn from(value: &mut Nmea) -> Self {
+        Self {
+            latitude: value.latitude(),
+            longitude: value.longitude(),
+            altitude: value.altitude(),
         }
     }
 }
