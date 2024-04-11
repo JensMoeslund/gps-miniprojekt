@@ -3,6 +3,7 @@ use byteorder::{BigEndian, ByteOrder};
 use rtic_monotonics::{systick::Systick, Monotonic};
 use stm32f4xx_hal::hal_02::blocking::i2c::{Read, Write};
 use fugit as _;
+use fugit::ExtU32 as _;
 pub enum Ms5611Reg {
     Reset,
     /// Digital pressure value
@@ -88,16 +89,17 @@ where I2C: Read + Write
 {
     address: u16,
     i2c: I2C,
-    prom: Prom
+    prom: Prom,
+    osr: Osr,
 
 }
 
 
-impl Ms5611<I2C>{
+impl Ms5611<I2c>{
         /// If i2c_addr is unspecified, 0x77 is used.
     /// The addr of the device is 0x77 if CSB is low / 0x76 if CSB is high.
-    pub fn new(i2c_bus: I2C, i2c_addr: Option<u16>)
-            -> Result<Ms5611, stm32f4xx_hal::i2c::Error> {
+    pub fn new(i2c_bus: I2C, i2c_addr: Option<u16>, osr:Option<Osr>)
+            -> Result<Ms5611<I2C>, stm32f4xx_hal::i2c::Error> {
                 let default_prom = Prom {
                     pressure_sensitivity: 0,
                     pressure_offset: 0,
@@ -110,6 +112,7 @@ impl Ms5611<I2C>{
                     address:  i2c_addr.unwrap_or(0x77),
                     i2c: i2c_bus,
                     prom: default_prom,
+                    osr: osr.unwrap_or(Osr::Opt256),
                 };
         Self::read_prom(&mut ms)?;
 
