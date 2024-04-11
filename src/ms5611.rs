@@ -1,3 +1,8 @@
+use embedded_hal::i2c;
+use byteorder::{BigEndian, ByteOrder};
+use rtic_monotonics::{systick::Systick, Monotonic};
+use stm32f4xx_hal::hal_02::blocking::i2c::{Read, Write};
+use fugit as _;
 pub enum Ms5611Reg {
     Reset,
     /// Digital pressure value
@@ -22,68 +27,6 @@ impl Ms5611Reg {
         }
     }
 }
-impl Ms5611{
-    pub fn read_sample(&mut self, osr: Osr) -> Result<Ms5611Sample,stm32f4xx_hal::i2c::Error> {
-            
-            // Read the digital pressure value
-            i2c.write(0x77,&[Ms5611Reg::D1.addr()+osr.addr_modifier()]).unwrap();
-            Systick::delay(osr.get_delay().millis().into()).await;
-            i2c.write(0x77,&[Ms5611Reg::AdcRead.addr()]).unwrap();
-            i2c.read(0x77, &mut buf).unwrap();
-            let mut d1 = BigEndian::read_u24(&buf);
-
-            // Read the digital temperature value
-            i2c.write(0x77,&[Ms5611Reg::D2.addr()+osr.addr_modifier()]).unwrap();
-            Systick::delay(osr.get_delay().millis().into()).await;
-            i2c.write(0x77,&[Ms5611Reg::AdcRead.addr()]).unwrap();
-            i2c.read(0x77, &mut buf).unwrap();
-            let mut d2 = BigEndian::read_u24(&buf) as i64;
-            // defmt::info!("{:?}",d2);
-            
-            
-            // let mut dt:i32 = d2 as i32 - ((c[4] as i32)*256);
-            let dt = d2 - ((c[5] as i64) << 8);
-            // defmt::info!("{:?}",dt);
-            // let mut test = [0u8;8];
-            // let mut temp = BigEndian::write_i64_into(&[(2000 + dt as i64 *(c[4] as i64)/2^23)],&mut test);
-            let mut temp: i32 = 2000 + (((dt as i64 * (c[6] as i64)) >> 23) as i32);
-            
-            
-            let mut offset: i64 = ((c[2] as i64) << 16) + ((dt * (c[4] as i64)) >> 7);
-            let mut sens: i64 = ((c[1] as i64) << 15) + ((dt * (c[3] as i64)) >> 8);
-
-
-            let mut t2 = 0i32;
-            let mut off2 = 0i64;
-            let mut sens2 = 0i64;
-            //
-            // Second order temperature compensation
-            //
-
-            // Low temperature (< 20C)
-            if temp < 2000 {
-                t2 = ((dt * dt) >> 31) as i32;
-                off2 = ((5 * (temp - 2000).pow(2)) >> 1) as i64;
-                sens2 = off2 >> 1;
-            }
-
-            // Very low temperature (< -15)
-            if temp < -1500 {
-                off2 += 7 * (temp as i64 + 1500).pow(2);
-                sens2 += ((11 * (temp as i64 + 1500).pow(2)) >> 1) as i64;
-            }
-
-            temp -= t2;
-            offset -= off2;
-            sens -= sens2;
-            let pressure: i32 = (((((d1 as i64) * sens) >> 21) - offset) >> 15) as i32;
-
-            return Ok(Ms5611Sample {
-                pressure_mbar: pressure as f32/100.0,
-                temperature_c: temperature as f32/100.0,
-            });
-}
-
 /// Oversampling ratio
 /// See datasheet for more information.
 pub enum Osr {
@@ -115,3 +58,209 @@ impl Osr {
         }
     }
 }
+/// Output from the MS5611.
+#[derive(Debug)]
+pub struct Ms5611Sample {
+    /// Pressure measured in millibars.
+    pub pressure_mbar: f32,
+    /// Temperature in celsius.
+    pub temperature_c: f32,
+}
+/// Factory calibrated data in device's ROM.
+#[derive(Debug)]
+struct Prom {
+    /// From datasheet, C1.
+    pub pressure_sensitivity: u16,
+    /// From datasheet, C2.
+    pub pressure_offset: u16,
+    /// From datasheet, C3.
+    pub temp_coef_pressure_sensitivity: u16,
+    /// From datasheet, C4.
+    pub temp_coef_pressure_offset: u16,
+    /// From datasheet, C5.
+    pub temp_ref: u16,
+    /// From datasheet, C6.
+    pub temp_coef_temp: u16,
+}
+
+pub struct Ms5611<I2C> 
+where I2C: Read + Write
+{
+    address: u16,
+    i2c: I2C,
+    prom: Prom
+
+}
+
+
+impl Ms5611<I2C>{
+        /// If i2c_addr is unspecified, 0x77 is used.
+    /// The addr of the device is 0x77 if CSB is low / 0x76 if CSB is high.
+    pub fn new(i2c_bus: I2C, i2c_addr: Option<u16>)
+            -> Result<Ms5611, stm32f4xx_hal::i2c::Error> {
+                let default_prom = Prom {
+                    pressure_sensitivity: 0,
+                    pressure_offset: 0,
+                    temp_coef_pressure_sensitivity: 0,
+                    temp_coef_pressure_offset: 0,
+                    temp_ref: 0,
+                    temp_coef_temp: 0,
+                };
+        let mut ms = Ms5611 {
+                    address:  i2c_addr.unwrap_or(0x77),
+                    i2c: i2c_bus,
+                    prom: default_prom,
+                };
+        Self::read_prom(&mut ms)?;
+
+        Ok(ms)
+    }
+
+    /// Triggers a hardware reset of the device.
+    pub fn reset(&mut self) -> Result<(), stm32f4xx_hal::i2c::Error> {
+        self.i2c.write(&[Ms5611Reg::Reset.addr()])?;
+        // Haven't tested for the lower time bound necessary for the chip to
+        // start functioning again. But, it does require some amount of sleep.
+        Systick::delay(50_u32.millis().into());
+        Ok(())
+    }
+
+    fn read_prom(&mut self) -> Result<(), stm32f4xx_hal::i2c::Error> {
+        let mut crc_check = 0u16;
+
+        // This is the CRC scheme in the MS5611 AN520 (Application Note)
+        fn crc_accumulate_byte(crc_check: &mut u16, byte: u8) {
+            *crc_check ^= byte as u16;
+            for _ in 0..8 {
+                if (*crc_check & 0x8000) > 0 {
+                    *crc_check = (*crc_check << 1) ^ 0x3000;
+                } else {
+                    *crc_check = *crc_check << 1;
+                }
+            }
+        }
+
+        fn crc_accumulate_buf2(crc_check: &mut u16, buf: &[u8]) {
+            crc_accumulate_byte(crc_check,buf[0]);
+            crc_accumulate_byte(crc_check,buf[1]);
+        }
+
+        let mut buf: [u8; 2] = [0u8; 2];
+        // Address reserved for manufacturer. We need it for the CRC.
+        self.i2c.write(&[Ms5611Reg::Prom.addr()])?;
+        self.i2c.read(&mut buf)?;
+        crc_accumulate_buf2(&mut crc_check, &buf);
+
+        self.i2c.write(&[Ms5611Reg::Prom.addr() + 2])?;
+        self.i2c.read(&mut buf)?;
+        let pressure_sensitivity = BigEndian::read_u16(&mut buf);
+        crc_accumulate_buf2(&mut crc_check, &buf);
+
+        self.i2c.write(&[Ms5611Reg::Prom.addr() + 4])?;
+        self.i2c.read(&mut buf)?;
+        let pressure_offset = BigEndian::read_u16(&mut buf);
+        crc_accumulate_buf2(&mut crc_check, &buf);
+
+        self.i2c.write(&[Ms5611Reg::Prom.addr() + 6])?;
+        self.i2c.read(&mut buf)?;
+        let temp_coef_pressure_sensitivity = BigEndian::read_u16(&mut buf);
+        crc_accumulate_buf2(&mut crc_check, &buf);
+
+        self.i2c.write(&[Ms5611Reg::Prom.addr() + 8])?;
+        self.i2c.read(&mut buf)?;
+        let temp_coef_pressure_offset = BigEndian::read_u16(&mut buf);
+        crc_accumulate_buf2(&mut crc_check, &buf);
+
+        self.i2c.write(&[Ms5611Reg::Prom.addr() + 10])?;
+        self.i2c.read(&mut buf)?;
+        let temp_ref = BigEndian::read_u16(&mut buf);
+        crc_accumulate_buf2(&mut crc_check, &buf);
+
+        self.i2c.write(&[Ms5611Reg::Prom.addr() + 12])?;
+        self.i2c.read(&mut buf)?;
+        let temp_coef_temp = BigEndian::read_u16(&mut buf);
+        crc_accumulate_buf2(&mut crc_check, &buf);
+
+        self.i2c.write(&[Ms5611Reg::Prom.addr() + 14])?;
+        self.i2c.read(&mut buf)?;
+        // CRC is only last 4 bits
+        let crc = BigEndian::read_u16(&mut buf) & 0x000f;
+        crc_accumulate_byte(&mut crc_check, buf[0]);
+        crc_accumulate_byte(&mut crc_check, 0);
+
+        crc_check = crc_check >> 12;
+
+        if crc != crc_check {
+            panic!("PROM CRC did not match: {} != {}", crc, crc_check);
+        }
+
+        self.prom = Prom {
+            pressure_sensitivity,
+            pressure_offset,
+            temp_coef_pressure_sensitivity,
+            temp_coef_pressure_offset,
+            temp_ref,
+            temp_coef_temp,
+        };
+        return Ok(());
+    }
+
+
+    pub async fn read_sample(&mut self, osr: Osr) -> Result<Ms5611Sample,stm32f4xx_hal::i2c::Error> {
+        let mut buf = [0u8; 3];
+        // Read the digital pressure value
+        self.i2c.write(0x77,&[Ms5611Reg::D1.addr()+osr.addr_modifier()]).unwrap();
+        Systick::delay(osr.get_delay().millis().into()).await;
+        self.i2c.write(0x77,&[Ms5611Reg::AdcRead.addr()]).unwrap();
+        self.i2c.read(0x77, &mut buf).unwrap();
+        let mut d1 = BigEndian::read_u24(&buf);
+
+        // Read the digital temperature value
+        self.i2c.write(0x77,&[Ms5611Reg::D2.addr()+osr.addr_modifier()]).unwrap();
+        Systick::delay(osr.get_delay().millis().into()).await;
+        self.i2c.write(0x77,&[Ms5611Reg::AdcRead.addr()]).unwrap();
+        self.i2c.read(0x77, &mut buf).unwrap();
+        let mut d2 = BigEndian::read_u24(&buf) as i64;
+        // defmt::info!("{:?}",d2);
+            
+            
+        let dt = d2 - ((self.prom.temp_ref as i64) << 8);
+        let mut temp: i32 = 2000 + (((dt as i64 * (self.prom.temp_coef_temp as i64)) >> 23) as i32);
+        
+        
+        let mut offset: i64 = ((self.prom.pressure_offset as i64) << 16) + ((dt * (self.prom.temp_coef_pressure_offset as i64)) >> 7);
+        let mut sens: i64 = ((self.prom.pressure_sensitivity as i64) << 15) + ((dt * (self.prom.temp_coef_pressure_sensitivity as i64)) >> 8);
+
+
+        let mut t2 = 0i32;
+        let mut off2 = 0i64;
+        let mut sens2 = 0i64;
+        //
+        // Second order temperature compensation
+        //
+
+        // Low temperature (< 20C)
+        if temp < 2000 {
+            t2 = ((dt * dt) >> 31) as i32;
+            off2 = ((5 * (temp - 2000).pow(2)) >> 1) as i64;
+            sens2 = off2 >> 1;
+        }
+
+        // Very low temperature (< -15)
+        if temp < -1500 {
+            off2 += 7 * (temp as i64 + 1500).pow(2);
+            sens2 += ((11 * (temp as i64 + 1500).pow(2)) >> 1) as i64;
+            }
+
+        temp -= t2;
+        offset -= off2;
+        sens -= sens2;
+        let pressure: i32 = (((((d1 as i64) * sens) >> 21) - offset) >> 15) as i32;
+
+        return Ok(Ms5611Sample {
+            pressure_mbar: pressure as f32/100.0,
+            temperature_c: temp as f32/100.0,
+        });
+    }
+}
+

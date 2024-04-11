@@ -40,6 +40,8 @@ snafu = {version = "0.8.2", default-features = false, features = ["rust_1_65"]}
 nmea = {version = "0.6.0", default-features = false,features = ["all-sentences"]}
 
 byteorder = {version = "1.5.0", default-features = false}
+
+embedded-hal = "1.0.0"
 # CAN support for STM32F4xx devices (requires the 'can' feature in stm32f4xx-hal)
 # The unstable-defmt feature derives defmt Format traits for the CAN types
 # bxcan = { version = "0.7", features = ["unstable-defmt"] }
