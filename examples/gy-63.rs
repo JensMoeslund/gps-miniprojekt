@@ -23,6 +23,8 @@ mod app {
     use defmt::info;
     use gps_miniprojekt::ms5611;
     use gps_miniprojekt::ms5611::Osr;
+    use stm32f4xx_hal::i2c::I2c;
+    use stm32f4xx_hal::pac::I2C1;
     #[shared]
     struct Shared {}
 
@@ -31,7 +33,7 @@ mod app {
     #[local]
     struct Local {
         led: PA5<Output<PushPull>>,
-        i2c: stm32f4xx_hal::i2c::I2c<stm32f4xx_hal::pac::I2C1>,
+        ms5611: ms5611::Ms5611<I2c<I2C1>>,
     }
     #[init]
     fn init(ctx: init::Context) -> (Shared, Local) {
@@ -53,8 +55,9 @@ mod app {
             (scl, sda),100.kHz(),
             &clocks,
         );
+        let mut ms5611 = ms5611::Ms5611::new(i2c, 0x77.into(),Osr::Opt1024.into()).unwrap();
         blink::spawn().ok();
-        (Shared {}, Local { led, i2c })
+        (Shared {}, Local { led, ms5611 })
     }
     #[idle]
     fn idle(_: idle::Context) -> ! {
@@ -63,32 +66,22 @@ mod app {
         }
     }
 
-    #[task(local = [led,i2c], priority = 1)]
+    #[task(local = [led,ms5611], priority = 1)]
     async fn blink(ctx: blink::Context) {
-        let i2c = ctx.local.i2c;
+        let ms5611 = ctx.local.ms5611;
         let mut buf = [0u8; 3];
         // Start by resetting to get the calibration data
-        i2c.write(0x77, &[Ms5611Reg::Reset.addr()]).unwrap();
-        Systick::delay(10.millis().into()).await;
-        // Read the calibration data
-        let mut c = [0u16;7];
-        for i in 0usize..=6 {
-            i2c.write(0x77, &[Ms5611Reg::Prom.addr() + i as u8 * 2]).unwrap();
-            i2c.read(0x77, &mut buf).unwrap();
-            defmt::info!("{:?}", BigEndian::read_u16(&buf));
-            c[i] = BigEndian::read_u16(&buf);
+        ms5611.reset().await.unwrap();
 
-        }
-        let osr = Osr::Opt256;
 
         loop {
             let t = Systick::now();
             ctx.local.led.toggle();
             defmt::info!("Blink!");
 
-
-
-            Systick::delay_until(t + 1.secs()).await;
+            let meas = ms5611.read_sample().await.unwrap();
+            defmt::info!("Measurement: {}", meas);
+            // Systick::delay_until(t + 1.secs()).await;
         }
     }
 }

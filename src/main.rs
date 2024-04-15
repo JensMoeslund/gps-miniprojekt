@@ -4,26 +4,49 @@
 #![feature(type_alias_impl_trait)]
 
 use gps_miniprojekt as _; // global logger + panicking-behavior
+use gps_miniprojekt::ms5611::Ms5611Sample;
 use gps_miniprojekt::{GnssLocation, NmeaReciever};
-use rtic_monotonics::{systick::Systick, Monotonic};
-use stm32f4xx_hal::{
-    gpio::{gpioa::PA5, Output, PushPull},
-    prelude::*,
-};
+struct SensorData {
+    ms5611_data: Ms5611Sample,
+    gnss_location: GnssLocation,
+}
+const BUF_LEN: usize = 5; 
+impl defmt::Format for SensorData {
+    fn format(&self, f: defmt::Formatter) {
+        defmt::write!(
+            f,
+            "{},{},{},{},{}",
+            self.ms5611_data.temperature_c,
+            self.ms5611_data.pressure_mbar,
+            self.gnss_location.latitude.unwrap(),
+            self.gnss_location.longitude.unwrap(),
+            self.gnss_location.altitude.unwrap()
+        );
+    }
+}
 
-#[rtic::app(device = stm32f4xx_hal::pac, dispatchers = [USART3,SPI1])]
+#[rtic::app(device = stm32f4xx_hal::pac, dispatchers = [USART3,SPI1,SPI2])]
 mod app {
 
-    use core::u8;
+    use core::{mem::size_of, u8};
 
     use super::*;
     // use alloc::string::ToString;
     use defmt::info;
-    use gps_miniprojekt::Error::SentenceNotFinished;
+    use gps_miniprojekt::{
+        ms5611::{self, Osr},
+        Error::SentenceNotFinished,
+    };
     use heapless::String;
-    use nmea::{sentences::gga, Nmea};
-    use stm32f4xx_hal::{pac::USART1, serial::Serial};
+    use nmea::Nmea;
+    use stm32f4xx_hal::{
+        i2c::I2c,
+        pac::{I2C1, USART1},
+        serial::Serial,
+    };
 
+    use rtic_monotonics::{systick::Systick, Monotonic};
+    use stm32f4xx_hal::prelude::*;
     // Holds the shared resources (used by multiple tasks)
     // Needed even if we don't use it
     #[shared]
@@ -36,17 +59,19 @@ mod app {
     // Needed even if we don't use it
     #[local]
     struct Local {
-        led: PA5<Output<PushPull>>,
         serial: Serial<USART1>,
         nmea_reciever: NmeaReciever,
-        sender: rtic_sync::channel::Sender<'static, char, 10>,
-        receiver: rtic_sync::channel::Receiver<'static, char, 10>,
+        sender: rtic_sync::channel::Sender<'static, char, BUF_LEN>,
+        receiver: rtic_sync::channel::Receiver<'static, char, BUF_LEN>,
+        ms5611: ms5611::Ms5611<I2c<I2C1>>,
     }
 
     // The init function is called in the beginning of the program
     #[init]
     fn init(ctx: init::Context) -> (Shared, Local) {
+        // panic!("test");
         info!("init");
+
 
         // Device specific peripherals
         let mut _device: stm32f4xx_hal::pac::Peripherals = ctx.device;
@@ -56,13 +81,12 @@ mod app {
 
         // Set up the LED. On the Nucleo-F446RE it's connected to pin PA5.
         let gpioa = _device.GPIOA.split();
-        let led = gpioa.pa5.into_push_pull_output();
 
         // Set up the USART1 peripheral for the Nmea Reciever
         let tx = gpioa.pa9.into_alternate::<7>();
         let rx = gpioa.pa10.into_alternate::<7>();
 
-        let (sender, receiver) = rtic_sync::make_channel!(char, 10);
+        let (sender, receiver) = rtic_sync::make_channel!(char, BUF_LEN);
         let mut serial = usart2
             .serial(
                 (tx, rx),
@@ -70,23 +94,39 @@ mod app {
                 &clocks,
             )
             .unwrap();
+        // Create the I2C device:
+        let gpiob = _device.GPIOB.split();
+
+        let scl = gpiob.pb8;
+        let sda = gpiob.pb9;
+
+        let i2c1 = _device.I2C1;
+        let i2c = i2c1.i2c((scl, sda), 100.kHz(), &clocks);
+        // Create the MS5611 device:
+        let ms5611 = ms5611::Ms5611::new(i2c, 0x77.into(), Osr::Opt1024.into()).unwrap_or_else(|e| {
+            defmt::error!("Error: {:?}", defmt::Debug2Format(&e));
+            panic!();
+        });
+        // defmt::info!("{}",size_of::<ms5611::Ms5611<I2c<I2C1>>>());
+
         // usart2.bwrite_all("Hello, world!\n".as_bytes()).unwrap();
         serial.listen(stm32f4xx_hal::serial::Event::RxNotEmpty);
-
-        defmt::info!("Init done!");
+        
         nmea_handler::spawn().ok();
-        gga_saver::spawn().ok();
+        sampler::spawn().ok();
+        defmt::info!("Init done!");
+        // gga_saver::spawn().ok();
         (
             Shared {
                 cmd_buffer: String::new(),
                 nmea_struct: Nmea::default(),
             },
             Local {
-                led,
                 serial,
                 nmea_reciever: NmeaReciever::new(),
                 sender,
                 receiver,
+                ms5611,
             },
         )
     }
@@ -110,6 +150,7 @@ mod app {
 
     #[task(priority = 3, local = [nmea_reciever,receiver], shared = [cmd_buffer])]
     async fn nmea_handler(ctx: nmea_handler::Context) {
+        defmt::debug!("NMEA handler start");
         let reciever = ctx.local.nmea_reciever;
         let mut cmd_buf = ctx.shared.cmd_buffer;
         let queue = ctx.local.receiver;
@@ -132,7 +173,7 @@ mod app {
         }
     }
 
-    #[task(priority = 1, shared = [nmea_struct, cmd_buffer])]
+    #[task(priority = 2, shared = [nmea_struct, cmd_buffer])]
     async fn nmea_decode(ctx: nmea_decode::Context) {
         let mut buf = ctx.shared.cmd_buffer;
         let mut nmea_struct = ctx.shared.nmea_struct;
@@ -159,15 +200,36 @@ mod app {
     }
 
     // The task functions are called by the scheduler
-    #[task(shared = [nmea_struct], priority = 1)]
-    async fn gga_saver(ctx: gga_saver::Context) {
-        let mut nmea_struct = ctx.shared.nmea_struct;
+    // #[task(shared = [nmea_struct], priority = 1)]
+    // async fn gga_saver(ctx: gga_saver::Context) {
+    //     let mut nmea_struct = ctx.shared.nmea_struct;
 
+    //     loop {
+    //         let t = Systick::now();
+    //         defmt::info!(
+    //             "{:?}",
+    //             nmea_struct.lock(|nmea_struct| GnssLocation::from(nmea_struct))
+    //         );
+    //         Systick::delay_until(t + 1.secs()).await;
+    //     }
+    // }
+    #[task(shared = [nmea_struct],local = [ms5611], priority = 1)]
+    async fn sampler(ctx: sampler::Context) {
+        // panic!("Sampler");
+        let ms5611 = ctx.local.ms5611;
+        let mut nmea_struct = ctx.shared.nmea_struct;
         loop {
             let t = Systick::now();
+            defmt::info!("Sampling");
+            let ms_meas = ms5611.read_sample().await.unwrap();
+            defmt::info!("Measurement: {:?}", ms_meas);
+            let gnss_meas = nmea_struct.lock(|nmea_struct| GnssLocation::from(nmea_struct));
             defmt::info!(
-                "{:?}",
-                nmea_struct.lock(|nmea_struct| GnssLocation::from(nmea_struct))
+                "{}",
+                SensorData {
+                    ms5611_data: ms_meas,
+                    gnss_location: gnss_meas,
+                }
             );
             Systick::delay_until(t + 1.secs()).await;
         }

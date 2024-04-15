@@ -242,9 +242,9 @@ impl NmeaReciever {
 }
 #[derive(Format)]
 pub struct GnssLocation {
-    latitude: Option<f64>,
-    longitude: Option<f64>,
-    altitude: Option<f32>,
+    pub latitude: Option<f64>,
+    pub longitude: Option<f64>,
+    pub altitude: Option<f32>,
 }
 impl From<&mut Nmea> for GnssLocation {
     fn from(value: &mut Nmea) -> Self {

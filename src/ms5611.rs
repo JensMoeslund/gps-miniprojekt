@@ -1,7 +1,7 @@
-use embedded_hal::i2c;
 use byteorder::{BigEndian, ByteOrder};
-use rtic_monotonics::{systick::Systick, Monotonic};
-use stm32f4xx_hal::hal_02::blocking::i2c::{Read, Write};
+use defmt::Format;
+use rtic_monotonics::systick::Systick;
+use stm32f4xx_hal::hal_02::blocking::i2c;
 use fugit as _;
 use fugit::ExtU32 as _;
 pub enum Ms5611Reg {
@@ -60,7 +60,7 @@ impl Osr {
     }
 }
 /// Output from the MS5611.
-#[derive(Debug)]
+#[derive(Debug,Format)]
 pub struct Ms5611Sample {
     /// Pressure measured in millibars.
     pub pressure_mbar: f32,
@@ -68,7 +68,7 @@ pub struct Ms5611Sample {
     pub temperature_c: f32,
 }
 /// Factory calibrated data in device's ROM.
-#[derive(Debug)]
+#[derive(Debug,Default)]
 struct Prom {
     /// From datasheet, C1.
     pub pressure_sensitivity: u16,
@@ -84,10 +84,11 @@ struct Prom {
     pub temp_coef_temp: u16,
 }
 
+
 pub struct Ms5611<I2C> 
-where I2C: Read + Write
+where I2C: i2c::Read + i2c::Write
 {
-    address: u16,
+    address: u8,
     i2c: I2C,
     prom: Prom,
     osr: Osr,
@@ -95,23 +96,17 @@ where I2C: Read + Write
 }
 
 
-impl Ms5611<I2c>{
-        /// If i2c_addr is unspecified, 0x77 is used.
+impl<I2C,I2cError> Ms5611<I2C>
+where I2C: i2c::Read<Error = I2cError> + i2c::Write<Error = I2cError>{
+    
+    /// If i2c_addr is unspecified, 0x77 is used.
     /// The addr of the device is 0x77 if CSB is low / 0x76 if CSB is high.
-    pub fn new(i2c_bus: I2C, i2c_addr: Option<u16>, osr:Option<Osr>)
-            -> Result<Ms5611<I2C>, stm32f4xx_hal::i2c::Error> {
-                let default_prom = Prom {
-                    pressure_sensitivity: 0,
-                    pressure_offset: 0,
-                    temp_coef_pressure_sensitivity: 0,
-                    temp_coef_pressure_offset: 0,
-                    temp_ref: 0,
-                    temp_coef_temp: 0,
-                };
+    pub fn new(i2c_bus: I2C, i2c_addr: Option<u8>, osr:Option<Osr>)
+            -> Result<Ms5611<I2C>, I2cError> {
         let mut ms = Ms5611 {
                     address:  i2c_addr.unwrap_or(0x77),
                     i2c: i2c_bus,
-                    prom: default_prom,
+                    prom: Prom::default(),
                     osr: osr.unwrap_or(Osr::Opt256),
                 };
         Self::read_prom(&mut ms)?;
@@ -120,15 +115,15 @@ impl Ms5611<I2c>{
     }
 
     /// Triggers a hardware reset of the device.
-    pub fn reset(&mut self) -> Result<(), stm32f4xx_hal::i2c::Error> {
-        self.i2c.write(&[Ms5611Reg::Reset.addr()])?;
+    pub async fn reset(&mut self) -> Result<(), I2cError> {
+        self.i2c.write(self.address,&[Ms5611Reg::Reset.addr()])?;
         // Haven't tested for the lower time bound necessary for the chip to
         // start functioning again. But, it does require some amount of sleep.
-        Systick::delay(50_u32.millis().into());
+        Systick::delay(50_u32.millis().into()).await;
         Ok(())
     }
 
-    fn read_prom(&mut self) -> Result<(), stm32f4xx_hal::i2c::Error> {
+    fn read_prom(&mut self) -> Result<(), I2cError> {
         let mut crc_check = 0u16;
 
         // This is the CRC scheme in the MS5611 AN520 (Application Note)
@@ -150,42 +145,42 @@ impl Ms5611<I2c>{
 
         let mut buf: [u8; 2] = [0u8; 2];
         // Address reserved for manufacturer. We need it for the CRC.
-        self.i2c.write(&[Ms5611Reg::Prom.addr()])?;
-        self.i2c.read(&mut buf)?;
+        self.i2c.write(self.address,&[Ms5611Reg::Prom.addr()])?;
+        self.i2c.read(self.address,&mut buf)?;
         crc_accumulate_buf2(&mut crc_check, &buf);
 
-        self.i2c.write(&[Ms5611Reg::Prom.addr() + 2])?;
-        self.i2c.read(&mut buf)?;
+        self.i2c.write(self.address,&[Ms5611Reg::Prom.addr() + 2])?;
+        self.i2c.read(self.address,&mut buf)?;
         let pressure_sensitivity = BigEndian::read_u16(&mut buf);
         crc_accumulate_buf2(&mut crc_check, &buf);
 
-        self.i2c.write(&[Ms5611Reg::Prom.addr() + 4])?;
-        self.i2c.read(&mut buf)?;
+        self.i2c.write(self.address,&[Ms5611Reg::Prom.addr() + 4])?;
+        self.i2c.read(self.address,&mut buf)?;
         let pressure_offset = BigEndian::read_u16(&mut buf);
         crc_accumulate_buf2(&mut crc_check, &buf);
 
-        self.i2c.write(&[Ms5611Reg::Prom.addr() + 6])?;
-        self.i2c.read(&mut buf)?;
+        self.i2c.write(self.address,&[Ms5611Reg::Prom.addr() + 6])?;
+        self.i2c.read(self.address,&mut buf)?;
         let temp_coef_pressure_sensitivity = BigEndian::read_u16(&mut buf);
         crc_accumulate_buf2(&mut crc_check, &buf);
 
-        self.i2c.write(&[Ms5611Reg::Prom.addr() + 8])?;
-        self.i2c.read(&mut buf)?;
+        self.i2c.write(self.address,&[Ms5611Reg::Prom.addr() + 8])?;
+        self.i2c.read(self.address,&mut buf)?;
         let temp_coef_pressure_offset = BigEndian::read_u16(&mut buf);
         crc_accumulate_buf2(&mut crc_check, &buf);
 
-        self.i2c.write(&[Ms5611Reg::Prom.addr() + 10])?;
-        self.i2c.read(&mut buf)?;
+        self.i2c.write(self.address,&[Ms5611Reg::Prom.addr() + 10])?;
+        self.i2c.read(self.address,&mut buf)?;
         let temp_ref = BigEndian::read_u16(&mut buf);
         crc_accumulate_buf2(&mut crc_check, &buf);
 
-        self.i2c.write(&[Ms5611Reg::Prom.addr() + 12])?;
-        self.i2c.read(&mut buf)?;
+        self.i2c.write(self.address,&[Ms5611Reg::Prom.addr() + 12])?;
+        self.i2c.read(self.address,&mut buf)?;
         let temp_coef_temp = BigEndian::read_u16(&mut buf);
         crc_accumulate_buf2(&mut crc_check, &buf);
 
-        self.i2c.write(&[Ms5611Reg::Prom.addr() + 14])?;
-        self.i2c.read(&mut buf)?;
+        self.i2c.write(self.address,&[Ms5611Reg::Prom.addr() + 14])?;
+        self.i2c.read(self.address,&mut buf)?;
         // CRC is only last 4 bits
         let crc = BigEndian::read_u16(&mut buf) & 0x000f;
         crc_accumulate_byte(&mut crc_check, buf[0]);
@@ -209,21 +204,21 @@ impl Ms5611<I2c>{
     }
 
 
-    pub async fn read_sample(&mut self, osr: Osr) -> Result<Ms5611Sample,stm32f4xx_hal::i2c::Error> {
+    pub async fn read_sample(&mut self) -> Result<Ms5611Sample,I2cError> {
         let mut buf = [0u8; 3];
         // Read the digital pressure value
-        self.i2c.write(0x77,&[Ms5611Reg::D1.addr()+osr.addr_modifier()]).unwrap();
-        Systick::delay(osr.get_delay().millis().into()).await;
-        self.i2c.write(0x77,&[Ms5611Reg::AdcRead.addr()]).unwrap();
-        self.i2c.read(0x77, &mut buf).unwrap();
-        let mut d1 = BigEndian::read_u24(&buf);
+        self.i2c.write(0x77,&[Ms5611Reg::D1.addr()+self.osr.addr_modifier()])?;
+        Systick::delay(self.osr.get_delay().millis().into()).await;
+        self.i2c.write(0x77,&[Ms5611Reg::AdcRead.addr()])?;
+        self.i2c.read(0x77, &mut buf)?;
+        let d1 = BigEndian::read_u24(&buf);
 
         // Read the digital temperature value
-        self.i2c.write(0x77,&[Ms5611Reg::D2.addr()+osr.addr_modifier()]).unwrap();
-        Systick::delay(osr.get_delay().millis().into()).await;
-        self.i2c.write(0x77,&[Ms5611Reg::AdcRead.addr()]).unwrap();
-        self.i2c.read(0x77, &mut buf).unwrap();
-        let mut d2 = BigEndian::read_u24(&buf) as i64;
+        self.i2c.write(0x77,&[Ms5611Reg::D2.addr()+self.osr.addr_modifier()])?;
+        Systick::delay(self.osr.get_delay().millis().into()).await;
+        self.i2c.write(0x77,&[Ms5611Reg::AdcRead.addr()])?;
+        self.i2c.read(0x77, &mut buf)?;
+        let d2 = BigEndian::read_u24(&buf) as i64;
         // defmt::info!("{:?}",d2);
             
             

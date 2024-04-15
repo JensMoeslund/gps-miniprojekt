@@ -37,7 +37,7 @@ snafu = {version = "0.8.2", default-features = false, features = ["rust_1_65"]}
 # panic-halt = "0.2.0"
 
 # NMEA support for GPS modules
-nmea = {version = "0.6.0", default-features = false,features = ["all-sentences"]}
+nmea = {version = "0.6.0", default-features = false,features = ["GLL", "GGA", "RMC", "VTG", "GSA", "GSV"]}
 
 byteorder = {version = "1.5.0", default-features = false}
 
