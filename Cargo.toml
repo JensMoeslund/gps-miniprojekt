@@ -30,15 +30,13 @@ fugit = {version = "0.3.7", features = ["defmt"] } # Duration and time handling
 # E.g. `heapless::Vec<u8, 32>` is a vector with a maximum capacity of 32 u8 elements
 heapless = "0.8.0"
 
-# Error handling
-snafu = {version = "0.8.2", default-features = false, features = ["rust_1_65"]}
 
 # Panic handler if you're using a different debugger
 # panic-halt = "0.2.0"
 
 # NMEA support for GPS modules
-nmea = {version = "0.6.0", default-features = false,features = ["GLL", "GGA", "RMC", "VTG", "GSA", "GSV"]}
-
+# nmea = {version = "0.6.0", default-features = false,features = ["GLL", "GGA", "RMC", "VTG", "GSA", "GSV"]}
+nmea0183 ={ version = "0.4.0"}
 byteorder = {version = "1.5.0", default-features = false}
 
 embedded-hal = "1.0.0"

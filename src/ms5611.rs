@@ -207,17 +207,17 @@ where I2C: i2c::Read<Error = I2cError> + i2c::Write<Error = I2cError>{
     pub async fn read_sample(&mut self) -> Result<Ms5611Sample,I2cError> {
         let mut buf = [0u8; 3];
         // Read the digital pressure value
-        self.i2c.write(0x77,&[Ms5611Reg::D1.addr()+self.osr.addr_modifier()])?;
+        self.i2c.write(self.address,&[Ms5611Reg::D1.addr()+self.osr.addr_modifier()])?;
         Systick::delay(self.osr.get_delay().millis().into()).await;
-        self.i2c.write(0x77,&[Ms5611Reg::AdcRead.addr()])?;
-        self.i2c.read(0x77, &mut buf)?;
+        self.i2c.write(self.address,&[Ms5611Reg::AdcRead.addr()])?;
+        self.i2c.read(self.address, &mut buf)?;
         let d1 = BigEndian::read_u24(&buf);
 
         // Read the digital temperature value
-        self.i2c.write(0x77,&[Ms5611Reg::D2.addr()+self.osr.addr_modifier()])?;
+        self.i2c.write(self.address,&[Ms5611Reg::D2.addr()+self.osr.addr_modifier()])?;
         Systick::delay(self.osr.get_delay().millis().into()).await;
-        self.i2c.write(0x77,&[Ms5611Reg::AdcRead.addr()])?;
-        self.i2c.read(0x77, &mut buf)?;
+        self.i2c.write(self.address,&[Ms5611Reg::AdcRead.addr()])?;
+        self.i2c.read(self.address, &mut buf)?;
         let d2 = BigEndian::read_u24(&buf) as i64;
         // defmt::info!("{:?}",d2);
             

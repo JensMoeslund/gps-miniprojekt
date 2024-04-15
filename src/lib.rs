@@ -3,7 +3,8 @@
 use defmt::Format;
 use defmt_brtt as _; // global logger
 use fugit as _;
-use nmea::Nmea;
+// use nmea::Nmea;
+use nmea0183 as nmea;
 // time units
 use panic_probe as _; // panic handler
 use stm32f4xx_hal as _; // memory layout // time abstractions
@@ -246,15 +247,15 @@ pub struct GnssLocation {
     pub longitude: Option<f64>,
     pub altitude: Option<f32>,
 }
-impl From<&mut Nmea> for GnssLocation {
-    fn from(value: &mut Nmea) -> Self {
-        Self {
-            latitude: value.latitude(),
-            longitude: value.longitude(),
-            altitude: value.altitude(),
-        }
-    }
-}
+// impl From<&mut Nmea> for GnssLocation {
+//     fn from(value: &mut Nmea) -> Self {
+//         Self {
+//             latitude: value.latitude(),
+//             longitude: value.longitude(),
+//             altitude: value.altitude(),
+//         }
+//     }
+// }
 
 #[macro_export]
 macro_rules! configure_clock {

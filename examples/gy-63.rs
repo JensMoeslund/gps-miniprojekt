@@ -81,7 +81,7 @@ mod app {
 
             let meas = ms5611.read_sample().await.unwrap();
             defmt::info!("Measurement: {}", meas);
-            // Systick::delay_until(t + 1.secs()).await;
+            Systick::delay_until(t + 1.secs()).await;
         }
     }
 }
