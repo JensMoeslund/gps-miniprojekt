@@ -10,7 +10,7 @@ struct SensorData {
     ms5611_data: Ms5611Sample,
     gnss_location: GnssLocation,
 }
-const BUF_LEN: usize = 5; 
+const BUF_LEN: usize = 8; 
 impl defmt::Format for SensorData {
     fn format(&self, f: defmt::Formatter) {
         defmt::write!(
@@ -112,8 +112,8 @@ mod app {
         // usart2.bwrite_all("Hello, world!\n".as_bytes()).unwrap();
         serial.listen(stm32f4xx_hal::serial::Event::RxNotEmpty);
         
-        nmea_handler::spawn().ok();
-        sampler::spawn().ok();
+        nmea_handler::spawn().unwrap();
+        sampler::spawn().unwrap();
         defmt::info!("Init done!");
         // gga_saver::spawn().ok();
         (
@@ -161,13 +161,13 @@ mod app {
                     Ok(sentence) => {
                         defmt::debug!("Sentence: {}", sentence.as_str());
                         cmd_buf.lock(|b| b.push_str(sentence.as_str()).unwrap());
-                        nmea_decode::spawn().ok();
+                        nmea_decode::spawn().unwrap();
                     }
                     Err(SentenceNotFinished) => continue,
                     Err(e) => {
                         defmt::error!("Error: {}", e);
                         break;
-                    }
+                    } 
                 }
             }
         }
