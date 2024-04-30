@@ -5,7 +5,7 @@
 
 use gps_miniprojekt as _; // global logger + panicking-behavior
 use gps_miniprojekt::ms5611::Ms5611Sample;
-use gps_miniprojekt::GnssLocation;
+use gps_miniprojekt::gnss::GnssLocation;
 
 struct SensorData {
     ms5611_data: Ms5611Sample,
