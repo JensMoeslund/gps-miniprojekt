@@ -1,10 +1,34 @@
 #![no_std]
 
+use defmt::Format;
 use panic_probe as _; // panic handler
 use fugit as _;
-use defmt_brtt as _; // global logger
+use defmt_brtt as _; // defmt logger
 pub mod ms5611;
 pub mod gnss;
+pub mod kalman;
+
+pub enum Error {
+    InvalidSentence,
+    SentenceWithoutPositonData,
+    KalmanNotInvertible,
+}
+
+impl Format for Error {
+    fn format(&self, fmt: defmt::Formatter) {
+        match self {
+            Error::SentenceWithoutPositonData => {
+                defmt::write!(fmt, "NMEA sentence does not contain position data")
+            }
+            Error::InvalidSentence => {
+                defmt::write!(fmt, "Invalid NMEA sentence")
+            }
+            Error::KalmanNotInvertible => {
+                defmt::write!(fmt, "Kalman filter matrix not invertible")
+            }
+        }
+    }
+}
 
 #[macro_export]
 macro_rules! configure_clock {

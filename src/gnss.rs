@@ -1,23 +1,9 @@
 use defmt::Format;
 use nmea0183 as nmea;
-#[derive(Debug)]
-pub enum Error {
-    InvalidSentence,
-    SentenceWithoutPositonData,
-}
+use super::Error;
 
-impl Format for Error {
-    fn format(&self, fmt: defmt::Formatter) {
-        match self {
-            Error::SentenceWithoutPositonData => {
-                defmt::write!(fmt, "NMEA sentence does not contain position data")
-            }
-            Error::InvalidSentence => {
-                defmt::write!(fmt, "Invalid NMEA sentence")
-            }
-        }
-    }
-}
+#[derive(Debug)]
+
 
 #[derive(Format, Default, Clone, Copy)]
 pub struct GnssLocation {

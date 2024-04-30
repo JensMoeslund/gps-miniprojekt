@@ -201,8 +201,8 @@ mod app {
             z[1] = 200.0;
             defmt::info!("{:?}", z.as_slice());
             A[0] = 100.0;
-            A[7] = 200.0; 
-            defmt::info!("{:?}", defmt::Debug2Format(&A));
+            let _b = A.get((0, 0));
+            defmt::info!("{:?}", defmt::Display2Format(&A));
             Systick::delay_until(t + 1.secs()).await;
         }
     }
