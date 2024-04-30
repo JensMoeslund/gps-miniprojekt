@@ -25,6 +25,10 @@ pub enum Error {
         byte: char,
     },
 
+    SentenceWithoutPositonData,
+
+    InvalidSentence,
+    
     // Used as a return type for the handle_byte method to support while let loops
     SentenceNotFinished,
 }
@@ -49,6 +53,12 @@ impl Format for Error {
             Error::SentenceNotFinished => {
                 defmt::write!(fmt, "NMEA sentence not yet finished (continue reading)")
             }
+            Error::SentenceWithoutPositonData => {
+                defmt::write!(fmt, "NMEA sentence does not contain position data")
+            },
+            Error::InvalidSentence => {
+                defmt::write!(fmt, "Invalid NMEA sentence")
+            },
         }
     }
 }
@@ -241,21 +251,60 @@ impl NmeaReciever {
         }
     }
 }
-#[derive(Format)]
+#[derive(Format,Default,Clone, Copy)]
 pub struct GnssLocation {
-    pub latitude: Option<f64>,
-    pub longitude: Option<f64>,
+    pub latitude: f64,
+    pub longitude: f64,
     pub altitude: Option<f32>,
 }
-// impl From<&mut Nmea> for GnssLocation {
-//     fn from(value: &mut Nmea) -> Self {
-//         Self {
-//             latitude: value.latitude(),
-//             longitude: value.longitude(),
-//             altitude: value.altitude(),
-//         }
-//     }
-// }
+
+impl TryFrom<nmea::ParseResult> for GnssLocation {
+    type Error = Error;
+    fn try_from(value: nmea::ParseResult) -> Result<Self,Self::Error> {
+        match value {
+            nmea::ParseResult::RMC(Some(rmc)) => Ok(Self::from(rmc)),
+            nmea::ParseResult::GGA(Some(gga)) => Ok(Self::from(gga)),
+            nmea::ParseResult::GLL(Some(gll)) => Ok(Self::from(gll)),
+            nmea::ParseResult::RMC(None) => Err(Error::InvalidSentence),
+            nmea::ParseResult::GGA(None) => Err(Error::InvalidSentence),
+            nmea::ParseResult::GLL(None) => Err(Error::InvalidSentence),
+            _ => Err(Error::SentenceWithoutPositonData),
+        }
+
+    }
+}
+impl From<nmea::RMC> for GnssLocation {
+    fn from(rmc: nmea::RMC) -> Self {
+        GnssLocation {
+            latitude: rmc.latitude.as_f64(),
+            longitude: rmc.longitude.as_f64(),
+            altitude: None,
+        }
+    }
+
+}
+impl From<nmea::GGA> for GnssLocation {
+    fn from(gga: nmea::GGA) -> Self {
+        GnssLocation {
+            latitude: gga.latitude.as_f64(),
+            longitude: gga.longitude.as_f64(),
+            altitude: Some(gga.altitude.meters),
+        }
+    }
+    
+}
+impl From<nmea::GLL> for GnssLocation {
+    fn from(gll: nmea::GLL) -> Self {
+        GnssLocation {
+            latitude: gll.latitude.as_f64(),
+            longitude: gll.longitude.as_f64(),
+            altitude: None,
+        }
+    }
+    
+}
+
+
 
 #[macro_export]
 macro_rules! configure_clock {

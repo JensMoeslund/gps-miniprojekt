@@ -6,10 +6,22 @@
 use gps_miniprojekt as _; // global logger + panicking-behavior
 use gps_miniprojekt::ms5611::Ms5611Sample;
 use gps_miniprojekt::{GnssLocation, NmeaReciever};
+use nmea0183::datetime::DateTime;
+
+
 struct SensorData {
     ms5611_data: Ms5611Sample,
     gnss_location: GnssLocation,
+    // timestamp: DateTime,
 }
+impl SensorData {
+    pub fn new() -> Self {
+        todo!();
+    }
+
+}
+
+
 const BUF_LEN: usize = 20; 
 impl defmt::Format for SensorData {
     fn format(&self, f: defmt::Formatter) {
@@ -18,14 +30,14 @@ impl defmt::Format for SensorData {
             "{},{},{},{},{}",
             self.ms5611_data.temperature_c,
             self.ms5611_data.pressure_mbar,
-            self.gnss_location.latitude.unwrap(),
-            self.gnss_location.longitude.unwrap(),
-            self.gnss_location.altitude.unwrap()
+            self.gnss_location.latitude,
+            self.gnss_location.longitude,
+            self.gnss_location.altitude 
         );
     }
 }
 
-#[rtic::app(device = stm32f4xx_hal::pac, dispatchers = [USART3,SPI1,ETH])]
+#[rtic::app(device = stm32f4xx_hal::pac, dispatchers = [USART3,SPI1,ETH,ETH_WKUP])]
 mod app {
 
     use core::{mem::size_of, u8};
@@ -38,11 +50,10 @@ mod app {
         Error::SentenceNotFinished,
     };
     use heapless::String;
-    // use nmea::Nmea;
-    use nmea0183;
+    use nmea0183::{Parser, ParseResult};
     use stm32f4xx_hal::{
         i2c::I2c,
-        pac::{I2C1, USART1},
+        pac::{dma1::st::par, I2C1, USART1},
         serial::Serial,
     };
 
@@ -53,7 +64,10 @@ mod app {
     #[shared]
     struct Shared {
         cmd_buffer: heapless::String<82>,
-        // nmea_struct: nmea::Nmea,
+        gnss_data: GnssLocation,
+        pressure_data: Ms5611Sample,
+
+
     }
 
     // Holds the local resources (used by a single task)
@@ -65,6 +79,7 @@ mod app {
         sender: rtic_sync::channel::Sender<'static, char, BUF_LEN>,
         receiver: rtic_sync::channel::Receiver<'static, char, BUF_LEN>,
         ms5611: ms5611::Ms5611<I2c<I2C1>>,
+        parser: Parser,
     }
 
     // The init function is called in the beginning of the program
@@ -109,19 +124,23 @@ mod app {
             panic!();
         });
         // defmt::info!("{}",size_of::<Result<ms5611::Ms5611<I2c<I2C1>>>>());
+        let parser = Parser::new();
+        
 
         // usart2.bwrite_all("Hello, world!\n".as_bytes()).unwrap();
         serial.listen(stm32f4xx_hal::serial::Event::RxNotEmpty);
         
         nmea_handler::spawn().unwrap();
-        simple_task::spawn().unwrap();
-        // sampler::spawn().unwrap();
+        alt_sampler::spawn().unwrap();
+        print_data::spawn().unwrap();
         defmt::info!("Init done!");
 
         // gga_saver::spawn().ok();
         (
             Shared {
                 cmd_buffer: String::new(),
+                gnss_data: GnssLocation::default(),
+                pressure_data: Ms5611Sample::default(),
                 // nmea_struct: Nmea::default(),
             },
             Local {
@@ -130,6 +149,7 @@ mod app {
                 sender,
                 receiver,
                 ms5611,
+                parser,
             },
         )
     }
@@ -151,58 +171,74 @@ mod app {
         }
     }
 
-    #[task(priority = 2, local = [nmea_reciever,receiver], shared = [cmd_buffer])]
+    #[task(priority = 2, local = [nmea_reciever,receiver,parser], shared = [cmd_buffer, gnss_data])]
     async fn nmea_handler(ctx: nmea_handler::Context) {
         defmt::debug!("NMEA handler start");
-        let reciever = ctx.local.nmea_reciever;
         let mut cmd_buf = ctx.shared.cmd_buffer;
         let queue = ctx.local.receiver;
+        let parser = ctx.local.parser;
+        let mut gnss_data = ctx.shared.gnss_data;
         loop {
             // await here automatically defers the task after receiving a byte
             while let Ok(byte) = queue.recv().await {
-                match reciever.handle_byte(byte as char) {
-                    Ok(sentence) => {
-                        defmt::debug!("Sentence: {}", sentence.as_str());
-                        cmd_buf.lock(|b| b.push_str(sentence.as_str()).unwrap());
-                        nmea_decode::spawn().unwrap();
+                if let Some(result) = parser.parse_from_byte(byte as u8) {
+                    match result {
+                        Ok(sentence) => {
+                            gnss_data.lock(|d| {
+                                if let Ok(loc) = GnssLocation::try_from(sentence) {
+                                    *d = loc;
+                                };
+                            })
+                        }, // Some other sentences..
+                        Err(e) => {defmt::error!("{}",e)} // Got parse error
                     }
-                    Err(SentenceNotFinished) => continue,
-                    Err(e) => {
-                        defmt::error!("Error: {}", e);
-                        break;
-                    } 
                 }
             }
         }
     }
 
-    #[task(priority = 3, shared = [ cmd_buffer])]
-    async fn nmea_decode(ctx: nmea_decode::Context) {
-        let mut buf = ctx.shared.cmd_buffer;
-        // let mut nmea_struct = ctx.shared.nmea_struct;
+    // #[task(priority = 3, shared = [ cmd_buffer])]
+    // async fn nmea_decode(ctx: nmea_decode::Context) {
+    //     let mut buf = ctx.shared.cmd_buffer;
+    //     // let mut nmea_struct = ctx.shared.nmea_struct;
 
-        defmt::debug!("NMEA decode");
-        let local_sentence = buf.lock(|b| {
-            let sentence = b.clone();
-            b.clear();
-            sentence
-        });
-        defmt::trace!("NMEA: {:?}", local_sentence.as_str());
+    //     defmt::debug!("NMEA decode");
+    //     let local_sentence = buf.lock(|b| {
+    //         let sentence = b.clone();
+    //         b.clear();
+    //         sentence
+    //     });
+    //     defmt::trace!("NMEA: {:?}", local_sentence.as_str());
 
-        // nmea_struct.lock(
-            // |nmea_struct| match nmea_struct.parse(local_sentence.as_str()) {
-            //     Ok(sentence_type) => {
-            //         defmt::debug!("NMEA sentence type: {:?}", sentence_type.as_str());
-            //     }
-            //     Err(e) => {
-            //         // This is very expensive, but we're not expecting many errors
-            //         defmt::error!("Error: {}", defmt::Display2Format(&e));
-            //     }
-            // },
-        // );
+    //     // nmea_struct.lock(
+    //         // |nmea_struct| match nmea_struct.parse(local_sentence.as_str()) {
+    //         //     Ok(sentence_type) => {
+    //         //         defmt::debug!("NMEA sentence type: {:?}", sentence_type.as_str());
+    //         //     }
+    //         //     Err(e) => {
+    //         //         // This is very expensive, but we're not expecting many errors
+    //         //         defmt::error!("Error: {}", defmt::Display2Format(&e));
+    //         //     }
+    //         // },
+    //     // );
+    // }
+
+    // Task for printing the location and pressure data together: 
+    #[task(priority = 3, shared = [gnss_data, pressure_data])]
+    async fn print_data(ctx: print_data::Context) {
+        let mut gnss_data = ctx.shared.gnss_data;
+        let mut pressure_data = ctx.shared.pressure_data;
+        loop {
+            let t = Systick::now();
+            let data = SensorData {
+                ms5611_data: pressure_data.lock(|d| *d),
+                gnss_location: gnss_data.lock(|d| *d),
+            };
+            defmt::info!("{}",data);
+            Systick::delay_until(t + 1.secs()).await;    
+        }
+
     }
-
-
 
     // The task functions are called by the scheduler
     // #[task(shared = [nmea_struct], priority = 1)]
@@ -218,35 +254,21 @@ mod app {
     //         Systick::delay_until(t + 1.secs()).await;
     //     }
     // }
-    #[task(priority = 1)]
-    async fn simple_task(_: simple_task::Context) {
-        // for _ in 0..1{
-            defmt::info!("Simple task");
-            Systick::delay(0.micros().into()).await;
-        // }
-        
-    }
 
  
-    #[task(priority = 1,)]
-    async fn sampler(ctx: sampler::Context) {
+    #[task(priority = 2,local = [ms5611], shared = [pressure_data])]
+    async fn alt_sampler(ctx: alt_sampler::Context) {
         // panic!("Sampler");
-        // let ms5611 = ctx.local.ms5611;
+        let ms5611 = ctx.local.ms5611;
         // let mut nmea_struct = ctx.shared.nmea_struct;
-
+        let mut pressure_data = ctx.shared.pressure_data;
+    
         loop {
+            let sample = ms5611.read_sample().await.unwrap();
             let t = Systick::now();
-            defmt::info!("Sampling");
-            // let ms_meas = ms5611.read_sample().await.unwrap();
-            // defmt::info!("Measurement: {:?}", ms_meas);
-            // let gnss_meas = nmea_struct.lock(|nmea_struct| GnssLocation::from(nmea_struct));
-            // defmt::info!(
-            //     "{}",
-            //     SensorData {
-            //         ms5611_data: ms_meas,
-            //         gnss_location: gnss_meas,
-            //     }
-            // );
+            pressure_data.lock(|d| {
+                *d = sample;
+            });
             Systick::delay_until(t + 1.secs()).await;
         }
     }

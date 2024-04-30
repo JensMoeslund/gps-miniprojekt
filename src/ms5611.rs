@@ -60,7 +60,7 @@ impl Osr {
     }
 }
 /// Output from the MS5611.
-#[derive(Debug,Format)]
+#[derive(Debug,Format,Default,Clone, Copy)]
 pub struct Ms5611Sample {
     /// Pressure measured in millibars.
     pub pressure_mbar: f32,
