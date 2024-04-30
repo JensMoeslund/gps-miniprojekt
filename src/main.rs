@@ -43,7 +43,6 @@ mod app {
     // use alloc::string::ToString;
     use defmt::info;
     use gps_miniprojekt::ms5611::{self, Osr};
-    use na::Vector6;
     use nmea0183::Parser;
     use stm32f4xx_hal::{
         i2c::I2c,

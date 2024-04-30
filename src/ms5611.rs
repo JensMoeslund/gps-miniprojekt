@@ -2,8 +2,6 @@ use byteorder::{BigEndian, ByteOrder};
 use defmt::Format;
 use rtic_monotonics::systick::Systick;
 use stm32f4xx_hal::hal_02::blocking::i2c;
-use fugit as _;
-use fugit::ExtU32 as _;
 pub enum Ms5611Reg {
     Reset,
     /// Digital pressure value
