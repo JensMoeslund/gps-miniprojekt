@@ -6,6 +6,7 @@
 use gps_miniprojekt as _; // global logger + panicking-behavior
 use gps_miniprojekt::gnss::GnssLocation;
 use gps_miniprojekt::ms5611::Ms5611Sample;
+use fugit::ExtU32;
 
 use nalgebra as na;
 

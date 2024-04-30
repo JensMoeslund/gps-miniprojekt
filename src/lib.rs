@@ -3,7 +3,7 @@
 use defmt::Format;
 use panic_probe as _; // panic handler
 use fugit as _;
-use defmt_brtt as _; // defmt logger
+use defmt_brtt as _; // global logger
 pub mod ms5611;
 pub mod gnss;
 pub mod kalman;
