@@ -1,5 +1,6 @@
 use byteorder::{BigEndian, ByteOrder};
 use defmt::Format;
+use fugit::ExtU32;
 use rtic_monotonics::systick::Systick;
 use stm32f4xx_hal::hal_02::blocking::i2c;
 pub enum Ms5611Reg {
