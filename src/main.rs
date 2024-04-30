@@ -4,14 +4,18 @@
 // #![feature(type_alias_impl_trait)]
 
 use gps_miniprojekt as _; // global logger + panicking-behavior
-use gps_miniprojekt::ms5611::Ms5611Sample;
 use gps_miniprojekt::gnss::GnssLocation;
+use gps_miniprojekt::ms5611::Ms5611Sample;
+
+use nalgebra as na;
 
 struct SensorData {
     ms5611_data: Ms5611Sample,
     gnss_location: GnssLocation,
-    // timestamp: DateTime,
 }
+
+type Vector7<T> = na::Matrix<T, na::U7, na::U1, na::ArrayStorage<T, 7, 1>>;
+type Matrix7<T> = na::Matrix<T, na::U7, na::U7, na::ArrayStorage<T, 7, 7>>;
 
 const BUF_LEN: usize = 20;
 impl defmt::Format for SensorData {
@@ -38,9 +42,8 @@ mod app {
     use super::*;
     // use alloc::string::ToString;
     use defmt::info;
-    use gps_miniprojekt::
-        ms5611::{self, Osr}
-    ;
+    use gps_miniprojekt::ms5611::{self, Osr};
+    use na::Vector6;
     use nmea0183::Parser;
     use stm32f4xx_hal::{
         i2c::I2c,
@@ -186,6 +189,8 @@ mod app {
     async fn print_data(ctx: print_data::Context) {
         let mut gnss_data = ctx.shared.gnss_data;
         let mut pressure_data = ctx.shared.pressure_data;
+        let mut z = Vector7::<f64>::zeros();
+        let mut A = Matrix7::<f64>::identity();
         loop {
             let t = Systick::now();
             let data = SensorData {
@@ -193,6 +198,12 @@ mod app {
                 gnss_location: gnss_data.lock(|d| *d),
             };
             defmt::info!("{}", data);
+            z[0] = 100.0;
+            z[1] = 200.0;
+            defmt::info!("{:?}", z.as_slice());
+            A[0] = 100.0;
+            A[7] = 200.0; 
+            defmt::info!("{:?}", defmt::Debug2Format(&A));
             Systick::delay_until(t + 1.secs()).await;
         }
     }

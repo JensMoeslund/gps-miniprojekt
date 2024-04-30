@@ -28,7 +28,7 @@ fugit = {version = "0.3.7", features = ["defmt"] } # Duration and time handling
 
 # Heapless is a collection of data structures that don't require dynamic memory allocation
 # E.g. `heapless::Vec<u8, 32>` is a vector with a maximum capacity of 32 u8 elements
-heapless = "0.8.0"
+# heapless = "0.8.0"
 
 
 # Panic handler if you're using a different debugger
@@ -40,6 +40,9 @@ nmea0183 ={ version = "0.4.0"}
 byteorder = {version = "1.5.0", default-features = false}
 
 embedded-hal = "1.0.0"
+
+nalgebra = {version = "0.32.5", default-features = false, features = ["macros"]}
+
 # CAN support for STM32F4xx devices (requires the 'can' feature in stm32f4xx-hal)
 # The unstable-defmt feature derives defmt Format traits for the CAN types
 # bxcan = { version = "0.7", features = ["unstable-defmt"] }
