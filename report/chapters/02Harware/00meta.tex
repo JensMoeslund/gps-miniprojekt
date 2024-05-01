@@ -41,8 +41,8 @@ Since the expected maximum altitude of the balloon is around 15 km, the MS5611 i
 \end{enumerate}
 
 \section{GNSS module }\label{sec:gnss-module}
-The GNSS module used in this project is the u-blox NEO-6M. 
-This module can recieve signals from GPS, GLONASS, Galileo, and BeiDou satellites. 
+The GNSS module used in this project is the u-blox NEO-6M.
+This module can recieve signals from GPS, GLONASS, Galileo, and BeiDou satellites.
 This module was chosen because it is the GNSS module used in the student satlab organization, where the project is intended to be used.
 
 \subsection{SSEQ for the NEO-6M}
@@ -55,24 +55,24 @@ This module was chosen because it is the GNSS module used in the student satlab 
 
             \item Measuring principle or sensor operating principle?
             \item What are the units (physical phenomenon, output from sensor, desired signal)?
-            The physical phenomenon: 
-            
+            The physical phenomenon:
+
             Output from the sensor:
             The out from the sensor is follows the NMEA 183 standard. The data is transmitted in ASCII format, and includes information about the satellites in view, the position of the receiver, and the time of the measurement.
             In the NMEA 183 standard, there exists different sentence-types. Some include information about the position of the receiver, some include information about the signal to the constellation.
-            The interesting sentences for this project are the GGA, RMC, and GSA sentences, since they include the position of the receiver. %TODO: skriv lige de rigtige pakker. 
+            The interesting sentences for this project are the GGA, RMC, and GSA sentences, since they include the position of the receiver. %TODO: skriv lige de rigtige pakker.
 
 
             Desired signal:
             The desired signal is the position of the receiver, and the speed and course of the receiver.
-            These can be found in the GGA and RMC sentences.%TODO: tjek rigtige pakker. 
+            These can be found in the GGA and RMC sentences.%TODO: tjek rigtige pakker.
 
             \item What is the reference (relative/absolute)?
         \end{enumerate}
     \item Measuring
         \begin{enumerate}[(a)]
             \item What are the sampling frequency and resolution?
-            The 
+            The
             \item What is the conversion from raw measurements to proper measurements?
         \end{enumerate}
     \item Noise
@@ -86,6 +86,7 @@ This module was chosen because it is the GNSS module used in the student satlab 
             \item What can we do to get different measurements (covering at least some of the sensor range)? Be creative!
         \end{enumerate}
 \end{enumerate}
+
 
 
 
