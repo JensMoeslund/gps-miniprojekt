@@ -3,8 +3,35 @@ This chapter will give an overview of the hardware used for implementing a Kalma
 It will also include answers to the SSEQ (Standard Sensor Exercise Questions) for the sensors used in the project.
 
 \section{MCU}\label{sec:mcu}
-The microcontroller used in this project is the STM32F446RE. The STM32F446RE is a 32-bit ARM Cortex-M4 microcontroller with a maximum CPU frequency of 180 MHz. The microcontroller has 512 KB of flash memory and 128 KB of RAM. The microcontroller has a variety of peripherals, including SPI, I2C, UART, and CAN. 
-This particular microcontroller was chosen because it is the microcontroller used 
+The microcontroller used in this project is the STM32F446RE. The STM32F446RE is a 32-bit ARM Cortex-M4 microcontroller with a maximum CPU frequency of 180 MHz. 
+The microcontroller has 512 KB of flash memory and 128 KB of RAM. 
+The microcontroller has a variety of peripherals, including SPI, I2C, UART, and CAN. 
+This particular microcontroller was chosen because it is the microcontroller used in the student satlab organization, where the project is intended to be used. 
+%TODO: indsæt evt. billede af microcontrolleren
+
+\section{Barometer}\label{sec:barometer}
+The barometer used in this project is the MS5611. 
+The MS5611 is a high-resolution pressure sensor. The purpose of the barometer is to measure the pressure, so an altitude can be calculated.
+The MS5611 can measure pressure from 10 mbar to 1200 mbar, with a resolution of up to 0.012 mbar. %TODO: indsæt kilde
+Since the expected maximum altitude of the balloon is around 15 km, the MS5611 is a suitable choice for this project.
+
+\subsection{SSEQ for the MS5611}
+\begin{enumerate}
+    \item What is measured?
+        \begin{enumerate}[(a)]
+            \item Physical property/phenomenon measured?
+            \item What are the units (physical phenomenon, output from sensor, desired signal)?
+        \end{enumerate}
+
+    \item Measuring
+        \begin{enumerate}[(a)]
+            \item What are the sampling frequency and resolution?
+            \item Are measurements linear with the measured property?
+        \end{enumerate}
+            
+    
+\end{enumerate}
+
 
 
 
