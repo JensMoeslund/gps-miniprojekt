@@ -174,7 +174,7 @@ mod app {
     }
 
     // Task for printing the location and pressure data together:
-    #[task(priority = 3, local=[kalman], shared = [gnss_data, pressure_data])]
+    #[task(priority = 1, local=[kalman], shared = [gnss_data, pressure_data])]
     async fn estimate(ctx: estimate::Context) {
         let mut gnss_data = ctx.shared.gnss_data;
         let mut pressure_data = ctx.shared.pressure_data;
