@@ -16,7 +16,7 @@ type Matrix8x6<T> = na::Matrix<T, na::U8, na::U6, na::ArrayStorage<T, 8, 6>>;
 type Matrix6x8<T> = na::Matrix<T, na::U6, na::U8, na::ArrayStorage<T, 6, 8>>;
 
 // newtype pattern
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct StateVector(Vector6<f32>);
 
 impl StateVector {
@@ -66,7 +66,7 @@ impl Format for StateVector {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct ObservationVector(Vector8<f32>);
 
 impl ObservationVector {
