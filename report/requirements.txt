@@ -8,5 +8,3 @@ ipywidgets
 pandas
 control
 ipympl
-torch
-complexPyTorch
