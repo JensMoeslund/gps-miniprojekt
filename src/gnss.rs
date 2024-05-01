@@ -5,13 +5,25 @@ use super::Error;
 #[derive(Debug)]
 
 
-#[derive(Format, Default, Clone, Copy)]
+#[derive(Format, Clone, Copy)]
 pub struct GnssLocation {
     pub latitude: f64,
     pub longitude: f64,
     pub altitude: Option<f32>,
     pub speed: Option<f32>,
     pub course: Option<f32>,
+}
+
+impl Default for GnssLocation {
+    fn default() -> Self {
+        Self {
+            latitude: 1.0,
+            longitude: 1.0,
+            altitude: Some(1.0),
+            speed: Some(1.0),
+            course: Some(1.0),
+        }
+    }
 }
 
 impl TryFrom<nmea::ParseResult> for GnssLocation {
