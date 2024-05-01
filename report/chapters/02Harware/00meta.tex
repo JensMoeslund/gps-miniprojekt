@@ -17,21 +17,75 @@ Since the expected maximum altitude of the balloon is around 15 km, the MS5611 i
 
 \subsection{SSEQ for the MS5611}
 \begin{enumerate}
+\item What is measured?
+    \begin{enumerate}[(a)]
+        \item Physical property/phenomenon measured?
+        \item What are the units (physical phenomenon, output from sensor, desired signal)?
+    \end{enumerate}
+
+\item Measuring
+    \begin{enumerate}[(a)]
+        \item What are the sampling frequency and resolution?
+        \item Are measurements linear with the measured property?
+        \item What is the conversion from raw measurements to proper measurements?
+    \end{enumerate}
+\item Noise
+    \begin{enumerate}[(a)]
+        \item What type of noise to expect, and how noise depends on use and environment?
+        \item For determining noise, how and for how long should we sample?
+    \end{enumerate}
+\item Testing
+    \begin{enumerate}[(a)]
+        \item Can we stabilize the environment to keep measured parameters constant?
+    \end{enumerate}
+\end{enumerate}
+
+\section{GNSS module }\label{sec:gnss-module}
+The GNSS module used in this project is the u-blox NEO-6M. 
+This module can recieve signals from GPS, GLONASS, Galileo, and BeiDou satellites. 
+This module was chosen because it is the GNSS module used in the student satlab organization, where the project is intended to be used.
+
+\subsection{SSEQ for the NEO-6M}
+\begin{enumerate}
     \item What is measured?
         \begin{enumerate}[(a)]
             \item Physical property/phenomenon measured?
-            \item What are the units (physical phenomenon, output from sensor, desired signal)?
-        \end{enumerate}
+            The physical phenomenon measured is the time it takes for a signal to travel from a satellite to the receiver.
+            This is done to multiple satellites, and the position of the receiver can be calculated using trilateration.
 
+            \item Measuring principle or sensor operating principle?
+            \item What are the units (physical phenomenon, output from sensor, desired signal)?
+            The physical phenomenon: 
+            
+            Output from the sensor:
+            The out from the sensor is follows the NMEA 183 standard. The data is transmitted in ASCII format, and includes information about the satellites in view, the position of the receiver, and the time of the measurement.
+            In the NMEA 183 standard, there exists different sentence-types. Some include information about the position of the receiver, some include information about the signal to the constellation.
+            The interesting sentences for this project are the GGA, RMC, and GSA sentences, since they include the position of the receiver. %TODO: skriv lige de rigtige pakker. 
+
+
+            Desired signal:
+            The desired signal is the position of the receiver, and the speed and course of the receiver.
+            These can be found in the GGA and RMC sentences.%TODO: tjek rigtige pakker. 
+
+            \item What is the reference (relative/absolute)?
+        \end{enumerate}
     \item Measuring
         \begin{enumerate}[(a)]
             \item What are the sampling frequency and resolution?
-            \item Are measurements linear with the measured property?
+            The 
+            \item What is the conversion from raw measurements to proper measurements?
         \end{enumerate}
-            
-    
+    \item Noise
+        \begin{enumerate}[(a)]
+            \item What type of noise to expect, and how noise depends on use and environment?
+            \item For determining noise, how and for how long should we sample?
+        \end{enumerate}
+    \item Testing
+        \begin{enumerate}[(a)]
+            \item Can we stabilize the environment to keep measured parameters constant?
+            \item What can we do to get different measurements (covering at least some of the sensor range)? Be creative!
+        \end{enumerate}
 \end{enumerate}
-
 
 
 
