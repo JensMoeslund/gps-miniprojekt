@@ -1,96 +1,162 @@
 use super::Error;
+use super::SensorData;
+use defmt::Format;
 use na::{Matrix6, Vector6};
 use nalgebra as na;
-use num_traits::float::FloatCore;
-// The nalgebra crate provides only up to 6D vectors and matrices.
+use nalgebra::ComplexField;
 
-/// A stack-allocated, 7-dimensional column vector.
-type Vector7<T> = na::Matrix<T, na::U7, na::U1, na::ArrayStorage<T, 7, 1>>;
-/// A stack-allocated, column-major, 7x7 square matrix.
-type Matrix7<T> = na::Matrix<T, na::U7, na::U7, na::ArrayStorage<T, 7, 7>>;
-/// A stack-allocated, column-major, 7x6 matrix.
-type Matrix7x6<T> = na::Matrix<T, na::U7, na::U6, na::ArrayStorage<T, 7, 6>>;
-/// A stack-allocated, column-major, 6x7 matrix.
-type Matrix6x7<T> = na::Matrix<T, na::U6, na::U7, na::ArrayStorage<T, 6, 7>>;
+// The nalgebra crate provides only up to 6D vectors and matrices.
+/// A stack-allocated, 8-dimensional column vector.
+type Vector8<T> = na::Matrix<T, na::U8, na::U1, na::ArrayStorage<T, 8, 1>>;
+/// A stack-allocated, column-major, 8x8 square matrix.
+pub type Matrix8<T> = na::Matrix<T, na::U8, na::U8, na::ArrayStorage<T, 8, 8>>;
+/// A stack-allocated, column-major, 8x6 matrix.
+type Matrix8x6<T> = na::Matrix<T, na::U8, na::U6, na::ArrayStorage<T, 8, 6>>;
+/// A stack-allocated, column-major, 6x8 matrix.
+type Matrix6x8<T> = na::Matrix<T, na::U6, na::U8, na::ArrayStorage<T, 6, 8>>;
 
 // newtype pattern
 #[derive(Debug, Default)]
 pub struct StateVector(Vector6<f32>);
 
 impl StateVector {
-    pub fn lat(self) -> f32 {
-        self.0[0]
+    pub fn lat(&self) -> &f32 {
+        &self.0[0]
     }
 
-    pub fn lon(self) -> f32 {
-        self.0[1]
+    pub fn lon(&self) -> &f32 {
+        &self.0[1]
     }
 
-    pub fn alt(self) -> f32 {
-        self.0[2]
+    pub fn alt(&self) -> &f32 {
+        &self.0[2]
     }
 
-    pub fn v_lat(self) -> f32 {
-        self.0[3]
+    pub fn v_lat(&self) -> &f32 {
+        &self.0[3]
     }
 
-    pub fn v_lon(self) -> f32 {
-        self.0[4]
+    pub fn v_lon(&self) -> &f32 {
+        &self.0[4]
     }
 
-    pub fn v_alt(self) -> f32 {
-        self.0[5]
+    pub fn v_alt(&self) -> &f32 {
+        &self.0[5]
+    }
+}
+
+impl Format for StateVector {
+    fn format(&self, f: defmt::Formatter) {
+        defmt::write!(
+            f,
+            "{{'lat': {}, 'lon': {}, 'alt': {}, 'v_lat': {}, 'v_lon': {}, 'v_alt': {}}}",
+            self.lat(),
+            self.lon(),
+            self.alt(),
+            self.v_lat(),
+            self.v_lon(),
+            self.v_alt(),
+        );
     }
 }
 
 #[derive(Debug, Default)]
-pub struct ObservationVector(Vector7<f32>);
+pub struct ObservationVector(Vector8<f32>);
 
 impl ObservationVector {
-    pub fn lat(self) -> f32 {
-        self.0[0]
+    pub fn lat(&self) -> &f32 {
+        &self.0[0]
     }
 
-    pub fn lon(self) -> f32 {
-        self.0[1]
+    pub fn lon(&self) -> &f32 {
+        &self.0[1]
     }
 
-    pub fn alt(self) -> f32 {
-        self.0[2]
+    pub fn alt_gnss(&self) -> &f32 {
+        &self.0[2]
     }
 
-    pub fn v_alt(self) -> f32 {
-        self.0[3]
+    pub fn v_alt_gnss(&self) -> &f32 {
+        &self.0[3]
     }
 
-    pub fn pres(self) -> f32 {
-        self.0[4]
+    pub fn alt_pres(&self) -> &f32 {
+        &self.0[4]
     }
 
-    pub fn speed(self) -> f32 {
-        self.0[5]
+    pub fn v_alt_pres(&self) -> &f32 {
+        &self.0[5]
     }
 
-    pub fn course(self) -> f32 {
-        self.0[6]
+    pub fn v_lat(&self) -> &f32 {
+        &self.0[6]
     }
-}
 
-// Noise variance structure
-pub struct Qnoise(StateVector);
-
-// Default noise variance is 1.0
-impl Default for Qnoise {
-    fn default() -> Self {
-        Self(StateVector(Vector6::from_element(1.0)))
+    pub fn v_lon(&self) -> &f32 {
+        &self.0[7]
     }
 }
 
-pub struct Rnoise(ObservationVector);
+impl Format for ObservationVector {
+    fn format(&self, f: defmt::Formatter) {
+        defmt::write!(f, "{{'lat': {}, 'lon': {}, 'alt_gnss': {}, 'v_alt_gnss': {}, 'alt_pres': {}, 'v_alt_pres': {}, 'v_lat': {}, 'v_lon': {}}}",
+            self.lat(),
+            self.lon(),
+            self.alt_gnss(),
+            self.v_alt_gnss(),
+            self.alt_pres(),
+            self.v_alt_pres(),
+            self.v_lat(),
+            self.v_lon(),
+        );
+    }
+}
 
-impl Default for Rnoise {
-    fn default() -> Self {
-        Self(ObservationVector(Vector7::from_element(1.0)))
+impl ObservationVector {
+    fn new(
+        lat: f32,
+        lon: f32,
+        alt_gnss: f32,
+        v_alt_gnss: f32,
+        alt_pres: f32,
+        v_alt_pres: f32,
+        v_lat: f32,
+        v_lon: f32,
+    ) -> Self {
+        Self(Vector8::from_column_slice(&[
+            lat, lon, alt_gnss, v_alt_gnss, alt_pres, v_alt_pres, v_lat, v_lon,
+        ]))
+    }
+
+    pub fn update(&mut self, data: SensorData, delta_t: f32) -> () {
+        *self = {
+            const R_0: f32 = 8.3144598;
+            const P_0: f32 = 101325.0;
+            const T_0: f32 = 288.15;
+            const G: f32 = 9.80665;
+            const M: f32 = 0.0289644;
+
+            // Shortcut to the GNSS data
+            let gnss = data.gnss_location;
+            let course_rad = gnss.course.unwrap_or(0.0).to_radians();
+
+            let alt_gnss = gnss.altitude.unwrap_or(0.0);
+            let alt_pres = -(((data.ms5611_data.pressure_pa() / P_0).ln() * T_0 * R_0) / (G * M));
+
+            let v_lat = course_rad.sin() * gnss.speed.unwrap_or(0.0);
+            let v_lon = course_rad.cos() * gnss.speed.unwrap_or(0.0);
+
+            ObservationVector::new(
+                gnss.latitude as f32,
+                gnss.longitude as f32,
+                alt_gnss,
+                self.alt_gnss() - alt_gnss / delta_t,
+                alt_pres,
+                self.alt_pres() - alt_pres / delta_t,
+                v_lat,
+                v_lon,
+            )
+        }
     }
 }
 
@@ -107,13 +173,13 @@ pub struct KalmanFilter {
     pub a: Matrix6<f32>,
 
     // the output gain matrix
-    pub h: Matrix7x6<f32>,
+    pub h: Matrix8x6<f32>,
 
     // the process noise covariance matrix
     pub q: Matrix6<f32>,
 
     // the measurement noise covariance matrix
-    pub r: Matrix7<f32>,
+    pub r: Matrix8<f32>,
 
     // the a priori covariance matrix
     pub p_m: Matrix6<f32>,
@@ -122,29 +188,39 @@ pub struct KalmanFilter {
     pub p: Matrix6<f32>,
 
     // the kalman gain matrix
-    pub k: Matrix6x7<f32>,
+    pub k: Matrix6x8<f32>,
 }
 
 impl KalmanFilter {
-    pub fn new(q: Qnoise, r: Rnoise) -> Self {
+    pub fn new(q: Matrix6<f32>, r: Matrix8<f32>, delta_t: f32) -> Self {
         KalmanFilter {
-            q: Matrix6::from_diagonal(&q.0 .0),
-            r: Matrix7::from_diagonal(&r.0 .0),
+            q,
+            r,
+            h: {
+                let mut h = Matrix8x6::zeros();
+                h[(0, 0)] = 1.0; //[1, 0, 0, 0, 0, 0],
+                h[(1, 1)] = 1.0; //[0, 1, 0, 0, 0, 0],
+                h[(2, 2)] = 1.0; //[0, 0, 1, 0, 0, 0],
+                h[(3, 5)] = 1.0; //[0, 0, 0, 0, 0, 1],
+                h[(4, 2)] = 1.0; //[0, 0, 1, 0, 0, 0],
+                h[(5, 5)] = 1.0; //[0, 0, 0, 0, 0, 1],
+                h[(6, 3)] = 1.0; //[0, 0, 0, 1, 0, 0],
+                h[(7, 4)] = 1.0; //[0, 0, 0, 0, 1, 0],
+                h
+            },
+            a: {
+                let mut a = Matrix6::identity();
+                a[(0, 3)] = delta_t;
+                a[(1, 4)] = delta_t;
+                a[(2, 5)] = delta_t;
+                a
+            },
             ..Default::default()
         }
     }
 
     // Add a measurement to the filter
-    pub fn update(
-        &mut self,
-        z: &ObservationVector,
-        r: Option<&Matrix7<f32>>,
-        h: Option<&Matrix7x6<f32>>,
-    ) -> Result<(), Error> {
-        // If new linearization matrices are provided, use them
-        self.h = *h.unwrap_or(&self.h);
-        self.r = *r.unwrap_or(&self.r);
-
+    pub fn update(&mut self, z: &ObservationVector) -> Result<(), Error> {
         // measurement error
         self.z_tilde.0 = z.0 - &self.h * &self.x.0;
 
@@ -170,42 +246,13 @@ impl KalmanFilter {
         Ok(())
     }
 
-    pub fn predict(&mut self, a: Option<&Matrix6<f32>>, q: Option<&Matrix6<f32>>) {
-        // If new linearization matrices are provided, use them
-        self.a = *a.unwrap_or(&self.a);
-        self.q = *q.unwrap_or(&self.q);
-
+    pub fn predict(&mut self) -> &StateVector {
         // Predict the state
         self.x.0 = &self.a * &self.x.0;
 
         // Predict the covariance
         self.p_m = &self.a * &self.p * &self.a.transpose() + &self.q;
-    }
 
-    pub fn linearize_h(&mut self) {
-        const R_STAR: f32 = 8.3144598;
-        const T: f32 = 288.15;
-        const G: f32 = 9.80665;
-        const M: f32 = 0.0289644;
-        const P: f32 = 101325.0;
-
-        // convienence
-        let x = &self.x;
-
-        // Move this to default implementation
-        *self.h.get_mut((4, 2)).unwrap() = -(R_STAR * T) / P * G * M;
-
-        // TODO Måske skal der trækkes 2pi fra her
-        *self.h.get_mut((5, 3)).unwrap() =
-            -x.v_lon() / (x.v_lat().powi(2) * (x.v_lon().powi(2) / x.v_lat().powi(2) + 1.0));
-
-        *self.h.get_mut((5, 4)).unwrap() =
-            1.0 / (x.v_lat() * (x.v_lon().powi(2) / x.v_lat().powi(2) + 1.0));
-
-        *self.h.get_mut((6, 3)).unwrap() =
-            x.v_lat() / (x.v_lat().powi(2) + x.v_lon().powi(2)).sqrt();
-
-        *self.h.get_mut((6, 4)).unwrap() =
-            -x.v_lon() / (x.v_lat().powi(2) + x.v_lon().powi(2)).sqrt();
+        &self.x
     }
 }

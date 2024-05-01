@@ -66,6 +66,13 @@ pub struct Ms5611Sample {
     /// Temperature in celsius.
     pub temperature_c: f32,
 }
+
+impl Ms5611Sample {
+    pub fn pressure_pa(&self) -> f32 {
+        self.pressure_mbar * 100.0
+    }
+}
+
 /// Factory calibrated data in device's ROM.
 #[derive(Debug,Default)]
 struct Prom {

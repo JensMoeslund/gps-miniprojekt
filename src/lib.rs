@@ -8,6 +8,26 @@ pub mod ms5611;
 pub mod gnss;
 pub mod kalman;
 
+pub struct SensorData {
+    pub ms5611_data: ms5611::Ms5611Sample,
+    pub gnss_location: gnss::GnssLocation,
+}
+impl defmt::Format for SensorData {
+    fn format(&self, f: defmt::Formatter) {
+        defmt::write!(
+            f,
+            "{},{},{},{},{},{},{}",
+            self.ms5611_data.temperature_c,
+            self.ms5611_data.pressure_mbar,
+            self.gnss_location.latitude,
+            self.gnss_location.longitude,
+            self.gnss_location.altitude,
+            self.gnss_location.speed,
+            self.gnss_location.course,
+        );
+    }
+}
+
 pub enum Error {
     InvalidSentence,
     SentenceWithoutPositonData,

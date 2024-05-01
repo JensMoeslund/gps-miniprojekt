@@ -1,39 +1,17 @@
 #![no_main]
 #![no_std]
-#![deny(warnings)]
+// #![deny(warnings)]
 // #![feature(type_alias_impl_trait)]
 
 use gps_miniprojekt as _; // global logger + panicking-behavior
 use gps_miniprojekt::gnss::GnssLocation;
 use gps_miniprojekt::ms5611::Ms5611Sample;
+use gps_miniprojekt::SensorData;
+use gps_miniprojekt::kalman::{KalmanFilter, Matrix8};
+
 use fugit::ExtU32;
 
-use nalgebra as na;
-
-struct SensorData {
-    ms5611_data: Ms5611Sample,
-    gnss_location: GnssLocation,
-}
-
-type Vector7<T> = na::Matrix<T, na::U7, na::U1, na::ArrayStorage<T, 7, 1>>;
-type Matrix7<T> = na::Matrix<T, na::U7, na::U7, na::ArrayStorage<T, 7, 7>>;
-
 const BUF_LEN: usize = 20;
-impl defmt::Format for SensorData {
-    fn format(&self, f: defmt::Formatter) {
-        defmt::write!(
-            f,
-            "{},{},{},{},{},{},{}",
-            self.ms5611_data.temperature_c,
-            self.ms5611_data.pressure_mbar,
-            self.gnss_location.latitude,
-            self.gnss_location.longitude,
-            self.gnss_location.altitude,
-            self.gnss_location.speed,
-            self.gnss_location.course,
-        );
-    }
-}
 
 #[rtic::app(device = stm32f4xx_hal::pac, dispatchers = [USART3,SPI1,ETH,ETH_WKUP])]
 mod app {
@@ -43,16 +21,20 @@ mod app {
     use super::*;
     // use alloc::string::ToString;
     use defmt::info;
-    use gps_miniprojekt::ms5611::{self, Osr};
+    use gps_miniprojekt::{kalman, ms5611::{self, Osr}};
+    use nalgebra::Matrix6;
     use nmea0183::Parser;
     use stm32f4xx_hal::{
         i2c::I2c,
-        pac::{I2C1, USART1},
+        pac::{exti::pr, I2C1, USART1},
         serial::Serial,
     };
 
     use rtic_monotonics::{systick::Systick, Monotonic};
     use stm32f4xx_hal::prelude::*;
+
+    const DELTA_T: f32 = 1.0;
+
     // Holds the shared resources (used by multiple tasks)
     // Needed even if we don't use it
     #[shared]
@@ -70,6 +52,7 @@ mod app {
         ch_receiver: rtic_sync::channel::Receiver<'static, char, BUF_LEN>,
         ms5611: ms5611::Ms5611<I2c<I2C1>>,
         nmea_parser: Parser,
+        kalman: KalmanFilter,
     }
 
     // The init function is called in the beginning of the program
@@ -116,15 +99,20 @@ mod app {
         // defmt::info!("{}",size_of::<Result<ms5611::Ms5611<I2c<I2C1>>>>());
         let nmea_parser = Parser::new();
 
+        // Create Kalman Filter
+        let mut kalman = KalmanFilter::new(
+            Matrix6::identity(),
+            Matrix8::identity(),
+            DELTA_T,
+        );
+
         // usart2.bwrite_all("Hello, world!\n".as_bytes()).unwrap();
         serial.listen(stm32f4xx_hal::serial::Event::RxNotEmpty);
 
         nmea_handler::spawn().unwrap();
         alt_sampler::spawn().unwrap();
-        print_data::spawn().unwrap();
+        estimate::spawn().unwrap();
         defmt::info!("Init done!");
-
-        // gga_saver::spawn().ok();
         (
             Shared {
                 gnss_data: GnssLocation::default(),
@@ -136,6 +124,7 @@ mod app {
                 ch_receiver,
                 ms5611,
                 nmea_parser,
+                kalman,
             },
         )
     }
@@ -185,26 +174,31 @@ mod app {
     }
 
     // Task for printing the location and pressure data together:
-    #[task(priority = 3, shared = [gnss_data, pressure_data])]
-    async fn print_data(ctx: print_data::Context) {
+    #[task(priority = 3, local=[kalman], shared = [gnss_data, pressure_data])]
+    async fn estimate(ctx: estimate::Context) {
         let mut gnss_data = ctx.shared.gnss_data;
         let mut pressure_data = ctx.shared.pressure_data;
-        let mut z = Vector7::<f64>::zeros();
-        let mut A = Matrix7::<f64>::identity();
+        let kalman = ctx.local.kalman;
+        let mut observation = kalman::ObservationVector::default();
         loop {
             let t = Systick::now();
             let data = SensorData {
                 ms5611_data: pressure_data.lock(|d| *d),
                 gnss_location: gnss_data.lock(|d| *d),
             };
-            defmt::info!("{}", data);
-            z[0] = 100.0;
-            z[1] = 200.0;
-            defmt::info!("{:?}", z.as_slice());
-            A[0] = 100.0;
-            let _b = A.get((0, 0));
-            defmt::info!("{:?}", defmt::Display2Format(&A));
+            observation.update(data, DELTA_T);
+            defmt::info!("z: {}", observation);
+            match kalman.update(&observation) {
+                Ok(_) => {
+                    defmt::info!("x: {}", kalman.predict());
+                }
+                Err(e) => {
+                    defmt::warn!("{}", e);
+                }
+            }
+            
             Systick::delay_until(t + 1.secs()).await;
+
         }
     }
 
