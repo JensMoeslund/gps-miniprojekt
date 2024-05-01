@@ -26,7 +26,7 @@ mod app {
     use nmea0183::Parser;
     use stm32f4xx_hal::{
         i2c::I2c,
-        pac::{exti::pr, I2C1, USART1},
+        pac::{I2C1, USART1},
         serial::Serial,
     };
 
@@ -34,6 +34,7 @@ mod app {
     use stm32f4xx_hal::prelude::*;
 
     const DELTA_T: f32 = 1.0;
+    const DELTA_T_MS: u32 = (DELTA_T * 1000.0) as u32;
 
     // Holds the shared resources (used by multiple tasks)
     // Needed even if we don't use it
@@ -100,7 +101,7 @@ mod app {
         let nmea_parser = Parser::new();
 
         // Create Kalman Filter
-        let mut kalman = KalmanFilter::new(
+        let kalman = KalmanFilter::new(
             Matrix6::identity(),
             Matrix8::identity(),
             DELTA_T,
@@ -197,7 +198,7 @@ mod app {
                 }
             }
             
-            Systick::delay_until(t + 1.secs()).await;
+            Systick::delay_until(t + DELTA_T_MS.millis()).await;
 
         }
     }
@@ -215,7 +216,7 @@ mod app {
             pressure_data.lock(|d| {
                 *d = sample;
             });
-            Systick::delay_until(t + 1.secs()).await;
+            Systick::delay_until(t + DELTA_T_MS.millis()).await;
         }
     }
 }
