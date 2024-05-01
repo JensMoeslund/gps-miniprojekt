@@ -45,6 +45,12 @@ impl StateVector {
     }
 }
 
+impl Default for StateVector {
+    fn default() -> Self {
+        Self(Vector6::from_element(1.0))
+    }
+}
+
 impl Format for StateVector {
     fn format(&self, f: defmt::Formatter) {
         defmt::write!(
@@ -94,6 +100,12 @@ impl ObservationVector {
 
     pub fn v_lon(&self) -> &f32 {
         &self.0[7]
+    }
+}
+
+impl Default for ObservationVector {
+    fn default() -> Self {
+        Self(Vector8::from_element(1.0))
     }
 }
 
