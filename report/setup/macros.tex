@@ -1,0 +1,145 @@
+%  A simple AAU report template.
+%  2015-05-08 v. 1.2.0
+%  Copyright 2010-2015 by Jesper Kjær Nielsen <jkn@es.aau.dk>
+%
+%  This is free software: you can redistribute it and/or modify
+%  it under the terms of the GNU General Public License as published by
+%  the Free Software Foundation, either version 3 of the License, or
+%  (at your option) any later version.
+%
+%  This is distributed in the hope that it will be useful,
+%  but WITHOUT ANY WARRANTY; without even the implied warranty of
+%  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+%  GNU General Public License for more details.
+%
+%  You can find the GNU General Public License at <http://www.gnu.org/licenses/>.
+%
+%
+%
+% see, e.g., http://en.wikibooks.org/wiki/LaTeX/Customizing_LaTeX#New_commands
+% for more information on how to create macros
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Macros for the titlepage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%Creates the aau titlepage
+\newcommand{\aautitlepage}[3]{%
+  {
+    %set up various length
+    \ifx\titlepageleftcolumnwidth\undefined
+      \newlength{\titlepageleftcolumnwidth}
+      \newlength{\titlepagerightcolumnwidth}
+    \fi
+    \setlength{\titlepageleftcolumnwidth}{0.5\textwidth-\tabcolsep}
+    \setlength{\titlepagerightcolumnwidth}{0.993\textwidth-2\tabcolsep-\titlepageleftcolumnwidth}
+    %create title page
+    \thispagestyle{empty}
+    \noindent%
+    \begin{tabular}{@{}ll@{}}
+      \parbox{\titlepageleftcolumnwidth}{
+          \includegraphics[width=\titlepageleftcolumnwidth]{chapters/00Frontmatter/figures/aau_logo_en}
+      } &
+      \parbox{\titlepagerightcolumnwidth}{\raggedleft\sf\small
+        #2
+      }\bigskip\\
+       #1 &
+      \parbox[t]{\titlepagerightcolumnwidth}{%
+      \textbf{Abstract:}\bigskip\par
+        \fbox{\parbox{\titlepagerightcolumnwidth-2\fboxsep-2\fboxrule}{%
+          #3
+        }}
+      }\\
+    \end{tabular}
+    \vfill
+      \noindent{\footnotesize\emph{The content of this report is freely available, but publication (with reference) may only be pursued due to agreement with the author.}}
+    \clearpage
+  }
+}
+
+%Create english project info
+\newcommand{\englishprojectinfo}[8]{%
+  \parbox[t]{\titlepageleftcolumnwidth}{
+    \textbf{Title:}\\ #1\bigskip\par
+    \textbf{Theme:}\\ #2\bigskip\par
+    \textbf{Project Period:}\\ #3\bigskip\par
+    \textbf{Project Group:}\\ #4\bigskip\par
+    \textbf{Participant(s):}\\ #5\bigskip\par
+    \textbf{Supervisor(s):}\\ #6\bigskip\par
+    \textbf{Copies:} #7\bigskip\par
+    \textbf{Page Numbers:} \pageref{bib:mybiblio}\bigskip\par
+    \textbf{Date of Completion:}\\ #8
+  }
+}
+
+%Create danish project info
+\newcommand{\danishprojectinfo}[8]{%
+  \parbox[t]{\titlepageleftcolumnwidth}{
+    \textbf{Titel:}\\ #1\bigskip\par
+    \textbf{Tema:}\\ #2\bigskip\par
+    \textbf{Projektperiode:}\\ #3\bigskip\par
+    \textbf{Projektgruppe:}\\ #4\bigskip\par
+    \textbf{Deltager(e):}\\ #5\bigskip\par
+    \textbf{Vejleder(e):}\\ #6\bigskip\par
+    \textbf{Oplagstal:} #7\bigskip\par
+    \textbf{Sidetal:} \pageref{bib:mybiblio}\bigskip\par
+    \textbf{Afleveringsdato:}\\ #8
+  }
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% An example environment
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\theoremheaderfont{\normalfont\bfseries}
+%\theorembodyfont{\normalfont}
+%\theoremstyle{break}
+%\def\theoremframecommand{{\color{gray!50}\vrule width 5pt \hspace{5pt}}}
+%\newshadedtheorem{exa}{Example}[chapter]
+%\newenvironment{example}[1]{%
+%		\begin{exa}[#1]
+%}{%
+%		\end{exa}
+%}
+%
+%\newcommand{\speaker}[2] % #1 = name from to[generic,n=#1], #2 = rotation angle
+%{\draw[thick,rotate=#2] (#1) +(.2,.25) -- +(.7,.75) -- +(.7,-.75) -- +(.2,-.25);}
+%
+%\newcommand{\tweeter}[2] % #1 = name from to[generic,n=#1], #2 = rotation angle
+%{\draw[thick,rotate=#2] (#1) +(.2,.25) arc (90:-90:0.25);}
+
+
+
+%\newcounter{rowcntr}[table]
+%\makeatletter
+%% Assuming arabic numbers for the table number -- in case of bottom table caption, we have to increase the table number by one, only for output.
+%\renewcommand{\therowcntr}{\@arabic{\numexpr\thetable}.\arabic{rowcntr}}
+%\makeatother
+%
+%\newcolumntype{N}{>{\refstepcounter{rowcntr}\therowcntr}c}
+%
+%
+%\AtBeginEnvironment{tabular}{\setcounter{rowcntr}{0}}
+%\AtBeginEnvironment{tabular}{\stepcounter{table}}
+%
+%\AfterEndEnvironment{tabular}{\addtocounter{table}{-1}}
+%
+%\newcommand\newtag[2]{#1\def\@currentlabel{#1}\label{#2}}
+%
+%\newcommand{\krav}[1]{\makecell[N]{\label{#1}}}
+
+%\newcommand{\relinput}[1]{\input{\currfiledir/#1}}
+
+%! begin preamble = math
+\usepackage{stackengine}
+%\usepackage{bm}
+
+% Commands for proper notation of vectors and matrices
+% Vectors are written in boldface lower case letters non-italicized
+\newcommand{\vect}[1]{\ensuremath{\bm{#1}}}
+% Matrices are written in boldface upper case letters non-italicized
+\newcommand\ubar[1]{\stackunder[2pt]{#1}{\rule{1ex}{.1ex}}}
+\newcommand{\matr}[1]{\ubar{\ensuremath{\mathrm{\mathbf{#1}}}}}
+% Quaternions are written in boldface lower case letters italicized
+\newcommand{\quat}[1]{\ensuremath{\mathrm{\mathbf{#1}}}}
+% Reference frame
+\newcommand{\rf}[2]{\ensuremath{\prescript{#1}{}{#2}}}
+%! end preamble = math

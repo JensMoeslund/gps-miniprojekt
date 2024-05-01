@@ -1,0 +1,30 @@
+\section{Test Table}\label{sec:Test-tabel}
+
+Marcos have been made to make it easier to make tables.
+The following is an example of a table made using the \texttt{tabular} environment.
+The macros are "toprule", "midrule", "bottomrule".
+\begin{table}[H]
+    \centering
+    \begin{tabular}{p{0.15\textwidth}p{0.5\textwidth}p{0.25\textwidth}}
+        \toprule
+        Method & Description & Formular \\
+        \midrule
+        Normalized IQ symbols & As mentioned  the two way channel is calculated by multiplying rom the transmitter and receiver.
+        The preprocessing to get the is to normalize the symbols, so the complex number has a length of 1.
+        The input dimension is then 79, which is the number of frequencies & $Z'=\frac{a+bi}{\sqrt{a^2+b^2}}$\\
+        \midrule
+        Phase & The phase is extracted from the symbols.
+        The input dimension is then 79, which is the number of frequencies & $\phi=\arctan\left(\frac{b}{a}\right)$\\
+        \midrule
+        Phase \mbox{unwrapped} & The phase is extracted from the and unwrapped using an unwrapping algorithm & $\phi=\arctan\left(\frac{b}{a}\right)$ and Unwrapping algorithm in \\
+        \midrule
+        Phase \mbox{difference} & The phase is extracted from, the difference between the phase of the current sample and the previous sample is calculated.
+        This results in an input dimension of 78 & $\Delta\phi = \phi_1 - \phi_2$\\
+        \midrule
+        Symbol \mbox{difference} & The are normalized and the difference between the current sample and the previous sample is calculated.
+        This results in an input dimension of 78 & $\Delta z_n=z_n-z_{n-1}$\\
+        \bottomrule
+    \end{tabular}
+    \caption{Preprocessing methods, their description and formular}
+    \label{tab:preprocessing}
+\end{table}

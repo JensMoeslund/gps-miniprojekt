@@ -1,0 +1,10 @@
+matplotlib
+schemdraw[matplotlib]
+numpy
+scipy
+pygments
+sympy
+ipywidgets
+pandas
+control
+ipympl
