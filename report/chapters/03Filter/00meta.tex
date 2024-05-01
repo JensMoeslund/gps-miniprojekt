@@ -164,5 +164,47 @@ From the above equation, the observation matrix $\mathbf{H}$ is derived as follo
 \end{align}
 
 
+\section{Noise Vectors}
+The process noise vector $\mathbf{w}_k$ and the observation noise vector $\mathbf{v}_k$ are assumed to be wide-sense stationary white noise processes.
+The process noise vector $\mathbf{w}_k$ is given by the covariance matrix $\mathbf{Q}$.
+The observation noise vector $\mathbf{v}_k$ is given by the covariance matrix $\mathbf{R}$.
+
+The covariance matrices $\mathbf{Q}$ and $\mathbf{R}$ will be estimated using the data collected from the GNSS module and the barometer
+
+\section{Kalman Filter}
+The Kalman filter is a recursive algorithm that can be split into two steps: the prediction step and the update step.
+
+The update step is given by the following equations:
+
+\begin{align}
+    \mathbf{\tilde{z}}_k &= \mathbf{z}_k - \mathbf{H}\mathbf{\tilde{x}}_{k-1}\\
+    \mathbf{S}_k &= \mathbf{H}\mathbf{P}_{k-1}\mathbf{H}^T + \mathbf{R}\\
+    \mathbf{K}_k &= \mathbf{P}_{k-1}\mathbf{H}^T\mathbf{S}_k^{-1}\\
+    \mathbf{\tilde{x}}_k &= \mathbf{\tilde{x}}_{k-1} + \mathbf{K}_k\mathbf{\tilde{z}}_k\\
+    \mathbf{P}_k &= (\mathbf{I} - \mathbf{K}_k\mathbf{H})\mathbf{P}_{k-1}
+\end{align}
+
+Where:
+\begin{itemize}
+    \item $\mathbf{\tilde{z}}_k$ is the innovation vector at time $k$.
+    \item $\mathbf{S}_k$ is the innovation covariance matrix at time $k$.
+    \item $\mathbf{K}_k$ is the Kalman gain at time $k$.
+    \item $\mathbf{P}_k$ is the error covariance matrix at time $k$.
+\end{itemize}
+
+The prediction step is given by the following equations:
+
+\begin{align}
+    \mathbf{\tilde{x}}_k &= \mathbf{A}\mathbf{\tilde{x}}_{k-1}\\
+    \mathbf{P}_k &= \mathbf{A}\mathbf{P}_{k-1}\mathbf{A}^T + \mathbf{Q}
+\end{align}
+
+Where:
+\begin{itemize}
+    \item $\mathbf{\tilde{x}}_k$ is the predicted state vector at time $k$.
+    \item $\mathbf{P}_k$ is the predicted error covariance matrix at time $k$.
+\end{itemize}
+
+
 
 
