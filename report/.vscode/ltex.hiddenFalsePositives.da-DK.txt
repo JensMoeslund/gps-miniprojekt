@@ -1,0 +1,14 @@
+{"rule":"Ordgentagelse","sentence":"^\\QN/A Cubesat krav krav:BatSize Batterierne må maksimalt have dimensionerne X x X x X. N/A TBD krav:BatCurrent Batterierne skal kunne afgive minimum X ampere kontinuerligt N/A TBD Tabel der viser de tekniske krav til batterierne.\\E$"}
+{"rule":"Ordgentagelse","sentence":"^\\QN/A Cubesat krav krav:EnergidensitetVolumen Batteriet skal have en energidensitet på over X \\E(?:Dummy|Ina|Jimmy-)[0-9]+\\Q.\\E$"}
+{"rule":"UPPERCASE_SENTENCE_START","sentence":"^\\Qtestopstillingen på Figur \\E(?:Dummy|Ina|Jimmy-)[0-9]+\\Q.\\E$"}
+{"rule":"COMMA_PARENTHESIS_WHITESPACE","sentence":"^\\QStrømspejlet er dimensioneret således, at det trækker 500 .\\E$"}
+{"rule":"COMMA_PARENTHESIS_WHITESPACE","sentence":"^\\QDets nominelle spænding er 3.6 , og kan oplades til maksimal kapacitet ved en spænding på 4.2 .\\E$"}
+{"rule":"UPPERCASE_SENTENCE_START","sentence":"^\\Qer polariseringen af strømmen ind/ud af batteriet og bruges i sammenhæng ISTAT benet.\\E$"}
+{"rule":"UPPERCASE_SENTENCE_START","sentence":"^\\Qat MCU skal indstilles til en input-pullup tilstand, så benet er højt når batteriet aflades.\\E$"}
+{"rule":"UPPERCASE_SENTENCE_START","sentence":"^\\Qbruges til at indikere om der er en ekstern strømforsyning tilstede, typisk med en LED.\\E$"}
+{"rule":"UPPERCASE_SENTENCE_START","sentence":"^\\Qdet skifter status når WALL benet indstilles, da WALL funktionen ikke bruges her vil dette ben efterlades NC (not connected).\\E$"}
+{"rule":"UPPERCASE_SENTENCE_START","sentence":"^\\Qer et ben som indikere om batteriet lades eller ej, dette ben bruges typisk med en LED.\\E$"}
+{"rule":"UPPERCASE_SENTENCE_START","sentence":"^\\Qdette ben også er overflødigt og derfor efterlades det også NC.\\E$"}
+{"rule":"UPPERCASE_SENTENCE_START","sentence":"^\\Qder vil ikke være rippelspænding på udgangen, så længe batteriet er koblet på.\\E$"}
+{"rule":"COMMA_PARENTHESIS_WHITESPACE","sentence":"^\\QCubeSats består af en eller flere units, som hver er en 10 x 10 cm kube, som typisk vejer under 2 .\\E$"}
+{"rule":"UPPERCASE_SENTENCE_START","sentence":"^\\Qat satellitten ikke er den eneste satellit ombord på raketten.\\E$"}

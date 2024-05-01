@@ -1,0 +1,22 @@
+\pagestyle{empty} %disable headers and footers
+\pagenumbering{roman} %use roman page numbering in the frontmatter
+
+\hypersetup{pageanchor=false}
+\input{chapters/00Frontmatter/01frontpage}
+\input{chapters/00Frontmatter/02colophon}
+\input{chapters/00Frontmatter/03titlepages}
+\hypersetup{pageanchor=true}
+
+\cleardoublepage
+\pdfbookmark[0]{Contents}{label:contents}
+\pagestyle{fancy} %enable headers and footers again
+
+\tableofcontents
+
+\input{chapters/00Frontmatter/04Preface}
+
+\printnoidxglossary[type=\acronymtype, title={List of Acronyms}, toctitle={List of Acronyms}]%
+%\printglossary[type=\acronymtype]
+%\printglossary[type=\acronymtype, title=List of Acronyms, toctitle=List of Acronyms, style=long]
+
+\cleardoublepage

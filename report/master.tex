@@ -1,0 +1,50 @@
+%  A simple AAU report template.
+%  2015-05-08 v. 1.2.0
+%  Copyright 2010-2015 by Jesper Kjær Nielsen <jkn@es.aau.dk>
+%
+%  This is free software: you can redistribute it and/or modify
+%  it under the terms of the GNU General Public License as published by
+%  the Free Software Foundation, either version 3 of the License, or
+%  (at your option) any later version.
+%
+%  This is distributed in the hope that it will be useful,
+%  but WITHOUT ANY WARRANTY; without even the implied warranty of
+%  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+%  GNU General Public License for more details.
+%
+%  You can find the GNU General Public License at <http://www.gnu.org/licenses/>.
+%
+\documentclass[11pt,a4paper,openany]{report}
+
+\input{setup/preamble}% package inclusion and set up of the document
+\input{setup/hyphenations}%
+\input{setup/macros}% my new macros
+\input{setup/acronyms}
+
+% \usetikzlibrary{external}
+% \tikzexternalize[prefix=tikz/]
+
+%\pgfplotsset{compat=1.17}
+
+
+\begin{document}
+    %frontmatter
+    \input{chapters/00Frontmatter/meta}
+
+    %mainmatter
+
+    \pagenumbering{arabic} %use arabic page numbering in the mainmatter
+
+    %Input the different chapters here:
+    \input{chapters/01Introduction/00meta}
+    \input{chapters/02Problem/00meta}
+    \input{chapters/03Development/00meta}
+    \input{chapters/05Discussion/00meta}
+    \input{chapters/06Conclusion/00meta}
+
+    \printbibliography[heading=bibintoc]
+    \label{bib:mybiblio}
+    %Input appendices here:
+    \input{chapters/07Appendix/01Maalejournaler/00meta}
+
+\end{document}
