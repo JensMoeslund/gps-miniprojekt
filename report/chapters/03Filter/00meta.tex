@@ -1,0 +1,168 @@
+\chapter{Filter}\label{ch:filter}
+This chapter will give an overview of the kalman filter implemented in this project.
+
+
+\section{System model}\label{sec:system-model}
+The system model used in this project is a linear model.
+The state-space representation of the system is given by the following equations:
+
+\begin{align}
+    \mathbf{x}_{k+1} &= \mathbf{A}\mathbf{x}_k + \mathbf{w}_k\\
+    \mathbf{z}_k &= \mathbf{H}\mathbf{x}_k + \mathbf{v}_k
+\end{align}
+
+Where:
+\begin{itemize}
+    \item $\mathbf{x}_k$ is the state vector at time $k$.
+    \item $\mathbf{A}$ is the state transition matrix.
+    \item $\mathbf{w}_k$ is the process noise vector at time $k$.
+    \item $\mathbf{z}_k$ is the observation vector at time $k$.
+    \item $\mathbf{H}$ is the observation matrix.
+    \item $\mathbf{v}_k$ is the observation noise vector at time $k$.
+\end{itemize}
+
+The above parameters will be explained in more detail in the following sections.
+
+
+\section{State vector}\label{sec:state-vector}
+The state vector $\mathbf{x}_k$ comprises the following kinematic variables:
+
+\begin{align}
+    \mathbf{x}_k =
+    \begin{bmatrix}
+       \phi_k          &
+       \lambda_k       &
+       r_k             &
+       \dot{\phi}_k    &
+       \dot{\lambda}_k &
+       \dot{r}_k
+    \end{bmatrix}^T
+\end{align}
+
+Where:
+\begin{itemize}
+    \item $\phi_k$ is the latitude at time $k$.
+    \item $\lambda_k$ is the longitude at time $k$.
+    \item $r_k$ is the altitude at time $k$.
+    \item $\dot{\phi}_k$ is the velocity in the direction of latitude at time $k$.
+    \item $\dot{\lambda}_k$ is the velocity in the direction of longitude at time $k$.
+    \item $\dot{r}_k$ is the velocity in the direction of altitude at time $k$.
+\end{itemize}
+
+\section{State Transition Matrix}
+The state transition matrix $\mathbf{A}$ is given by the kinematic equations of motion.
+The kinematic equations of motion are given by the following equations:
+
+\begin{align}
+    \mathbf{x}_{k+1} =
+    \begin{bmatrix}
+        \phi_{k+1}          \\
+        \lambda_{k+1}       \\
+        r_{k+1}             \\
+        \dot{\phi}_{k+1}    \\
+        \dot{\lambda}_{k+1} \\
+        \dot{r}_{k+1}
+    \end{bmatrix}
+    &=
+    \begin{bmatrix}
+        \phi_k + \dot{\phi}_k\Delta t \\
+        \lambda_k + \dot{\lambda}_k\Delta t \\
+        r_k + \dot{r}_k\Delta t \\
+        \dot{\phi}_k \\
+        \dot{\lambda}_k \\
+        \dot{r}_k
+    \end{bmatrix}
+\end{align}
+
+From the above equations, the state transition matrix $\mathbf{A}$ is derived as follows:
+
+\begin{align}
+    \mathbf{A} =
+    \begin{bmatrix}
+        1 & 0 & 0 & \Delta t & 0 & 0 \\
+        0 & 1 & 0 & 0 & \Delta t & 0 \\
+        0 & 0 & 1 & 0 & 0 & \Delta t \\
+        0 & 0 & 0 & 1 & 0 & 0 \\
+        0 & 0 & 0 & 0 & 1 & 0 \\
+        0 & 0 & 0 & 0 & 0 & 1
+    \end{bmatrix}
+\end{align}
+
+
+\section{Observation Vector}
+The observation vector $\mathbf{z}_k$ comprises the following variables:
+
+\begin{align}
+    \mathbf{z}_k =
+    \begin{bmatrix}
+        \mathtt{lat\_g}_k &
+        \mathtt{lon\_g}_k &
+        \mathtt{alt\_g}_k &
+        \mathtt{v\_alt\_g}_k &
+        \mathtt{alt\_b}_k &
+        \mathtt{v\_alt\_b}_k &
+        \mathtt{v\_lat\_g}_k &
+        \mathtt{v\_lon\_g}_k
+    \end{bmatrix}^T
+\end{align}
+
+Where:
+\begin{itemize}
+    \item $\mathtt{lat\_g}_k$ is the latitude from the GNSS module at time $k$.
+    \item $\mathtt{lon\_g}_k$ is the longitude from the GNSS module at time $k$.
+    \item $\mathtt{alt\_g}_k$ is the altitude from the GNSS module at time $k$.
+    \item $\mathtt{v\_alt\_g}_k$ is the vertical velocity from the GNSS module at time $k$.
+    \item $\mathtt{alt\_b}_k$ is the altitude from the barometer at time $k$.
+    \item $\mathtt{v\_alt\_b}_k$ is the vertical velocity from the barometer at time $k$.
+    \item $\mathtt{v\_lat\_g}_k$ is the velocity in the direction of latitude from the GNSS module at time $k$.
+    \item $\mathtt{v\_lon\_g}_k$ is the velocity in the direction of longitude from the GNSS module at time $k$.
+\end{itemize}
+
+
+\section{Observation Matrix}
+The observation matrix $\mathbf{H}$ is derived from the observation vector $\mathbf{z}_k$.
+Assuming a perfect observation, the observation vector $\mathbf{z}_k$ is given by the following equation:
+
+\begin{align}
+    \mathbf{z}_k =
+    \begin{bmatrix}
+        \mathtt{lat\_g}_k \\
+        \mathtt{lon\_g}_k \\
+        \mathtt{alt\_g}_k \\
+        \mathtt{v\_alt\_g}_k \\
+        \mathtt{alt\_b}_k \\
+        \mathtt{v\_alt\_b}_k \\
+        \mathtt{v\_lat\_g}_k \\
+        \mathtt{v\_lon\_g}_k
+    \end{bmatrix}
+    =
+    \begin{bmatrix}
+        \phi_k \\
+        \lambda_k \\
+        r_k \\
+        \dot{r}_k \\
+        r_k \\
+        \dot{r}_k \\
+        \dot{\phi}_k \\
+        \dot{\lambda}_k
+    \end{bmatrix}
+\end{align}
+
+From the above equation, the observation matrix $\mathbf{H}$ is derived as follows:
+
+\begin{align}
+    \mathbf{H} =
+    \begin{bmatrix}
+        1 & 0 & 0 & 0 & 0 \\
+        0 & 1 & 0 & 0 & 0 \\
+        0 & 0 & 1 & 0 & 0 \\
+        0 & 0 & 0 & 0 & 1 \\
+        0 & 0 & 1 & 0 & 0 \\
+        0 & 0 & 0 & 0 & 1 \\
+        0 & 0 & 0 & 1 & 0
+    \end{bmatrix}
+\end{align}
+
+
+
+
