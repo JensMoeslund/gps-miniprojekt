@@ -1,5 +1,27 @@
-\chapter{Discussion}\label{ch:discussion}
-In this chapter the discussion is put.
+\chapter{Results}\label{ch:results}
+This chapter will give an overview of the results of the tests performed on the system.
 
-% Her inputtes alle de forskellige filer, som skal være i dette kapitel.
-\input{chapters/05Discussion/01Test}
+\section{Stationary test}\label{sec:stationary-test}
+The stationary test is a test to determine the measurement noise of the sensors.
+The test is done by placing the sensors in a stationary position, and measuring the noise of the sensors.
+A plot of measured values can be seen in \autoref{fig:stationary-test}.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/stationary-test.png}
+    \caption{Plot of the stationary test.
+\end{figure}
+%TODO: indsæt billede
+
+From this test the measurement noise of the sensors is found to be:
+%TODO: indsæt værdier.
+
+\section{Kalman filter test}\label{sec:kalman-filter-test}
+In this test the Kalman filter is tested.
+Due to time constraints, the test is done on the stationary data from the stationary test.
+It can however be seen that the Kalman filter is able to filter out the noise from the sensors, and combine the multiple sensors to a more accurate estimate.
+A plot of the estimated altitude can be seen in Figure~\ref{fig:kalman-filter-test}.
+%TODO: indsæt billede
+
+
+
+
