@@ -90,6 +90,22 @@ The software is divided into the following tasks:
     \item \textbf{NMEA Parsing Task:} This task is responsible for parsing the NMEA data from the GNSS, and storing the parsed data in a buffer.
     \item \textbf{Kalman Filter Task:} This task is responsible for running the Kalman filter using the data from the GNSS and the barometer.
 \end{itemize}
+A block diagram of the start of the program is seen in Figure~\ref{fig:initial-block-diagram}.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.3\textwidth]{chapters/04Software/figures/bob}
+    \caption{Initial block diagram of the software.}
+    \label{fig:initial-block-diagram}
+\end{figure}
+
+The init function then starts the tasks.
+The flow of the remaining program can be seen in Figure~\ref{fig:flow-diagram}.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{chapters/04Software/figures/blockdiagram_loop}
+    \caption{Flow diagram of the software.}
+    \label{fig:flow-diagram}
+\end{figure}
 
 The GNSS Sampling Task is responsible for reading the raw GNSS data, but since the data is sent over UART, with a certain time interval, the task must be a hardware task, reacting on the interrupt from the UART.
 For every recieved byte, the task will send the byte in a message queue, which the NMEA Parsing Task will read from.
