@@ -57,11 +57,11 @@ The software uses the following external dependencies:
     \item \textbf{nmea0183} is a library for parsing NMEA 0183 data.
 \end{itemize}
 \subsection{nalgebra}
-The nalgebra library is used for linear algebra operations.%TODO: indsæt kilde
+The nalgebra library is used for linear algebra operations~\cite{nalgebra}.
 The library is used for matrix operations, such as matrix multiplication, matrix inversion, and matrix addition.
 
 \subsection{RTIC}
-The RTOS used in this project is RTIC.%TODO: indsæt kilde til rtic
+The RTOS used in this project is RTIC~\cite{rtic}.
 RTIC is a real-time interrupt-driven concurrency (RTIC) framework for building concurrent applications in Rust.
 
 RTIC is based on the concept of tasks, which are functions that can be executed concurrently.
@@ -74,7 +74,7 @@ RTIC requires the use of an initialization function, which is used to initialize
 In the initialization function, the static resources are initialized, and the peripherals are configured.
 \subsection{nmea0183}
 The nmea0183 library is used for parsing NMEA 0183 data.
-The library is used to parse the NMEA data from the GNSS module, and extract the relevant information, such as latitude, longitude, altitude, and speed.%TODO: indsæt kilde
+The library is used to parse the NMEA data from the GNSS module, and extract the relevant information, such as latitude, longitude, altitude, and speed~\cite{nema0183}.
 
 \section{Tasks}
 The software is divided into the following tasks:
