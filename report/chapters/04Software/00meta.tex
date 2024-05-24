@@ -4,21 +4,49 @@ The software is divided into different tasks, which are handled by the RTOS.
 
 
 \section{File Tree}
-The file tree of the software is as follows:
+The project files are available on GitHub at \url{https://github.com/JensMoeslund/gps-miniprojekt}.
+The file tree is shown below, with descriptions of the files and links to the files on GitHub.
 
 \dirtree{%
     .1 gps-miniprojekt/.
     .2 .cargo/.
-    .3 \href{https://github.com/JensMoeslund/gps-miniprojekt/blob/master/.cargo/config.toml}{config.toml}.
+    .3 \href{https://github.com/JensMoeslund/gps-miniprojekt/blob/master/.cargo/config.toml}{config.toml} $\longrightarrow$
+    \begin{minipage}[t]{7cm}
+        Configuration file including target and linker settings{.}
+    \end{minipage}.
     .2 src/.
-    .3 \href{https://github.com/JensMoeslund/gps-miniprojekt/blob/master/src/gnss.rs}{gnss.rs}.
-    .3 \href{https://github.com/JensMoeslund/gps-miniprojekt/blob/master/src/kalman.rs}{kalman.rs}.
-    .3 \href{https://github.com/JensMoeslund/gps-miniprojekt/blob/master/src/lib.rs}{lib.rs}.
-    .3 \href{https://github.com/JensMoeslund/gps-miniprojekt/blob/master/src/main.rs}{main.rs}.
-    .3 \href{https://github.com/JensMoeslund/gps-miniprojekt/blob/master/src/ms5611.rs}{ms5611.rs}.
-    .2 \href{https://github.com/JensMoeslund/gps-miniprojekt/blob/master/Cargo.toml}{Cargo.toml}.
-    .2 \href{https://github.com/JensMoeslund/gps-miniprojekt/blob/master/memory.x}{memory.x}.
-    .2 \href{https://github.com/JensMoeslund/gps-miniprojekt/blob/master/rust-toolchain.toml}{rust-toolchain.toml}.
+    .3 \href{https://github.com/JensMoeslund/gps-miniprojekt/blob/master/src/gnss.rs}{gnss.rs} $\longrightarrow$
+    \begin{minipage}[t]{7cm}
+        Library for parsing GNSS NMEA data{.}
+    \end{minipage}.
+    .3 \href{https://github.com/JensMoeslund/gps-miniprojekt/blob/master/src/kalman.rs}{kalman.rs} $\longrightarrow$
+    \begin{minipage}[t]{7cm}
+        Library for handling the Kalman filter and state estimation{.}
+    \end{minipage}..
+    .3 \href{https://github.com/JensMoeslund/gps-miniprojekt/blob/master/src/lib.rs}{lib.rs} $\longrightarrow$
+    \begin{minipage}[t]{7cm}
+        Main library defining project structure{.}
+    \end{minipage}.
+    .3 \href{https://github.com/JensMoeslund/gps-miniprojekt/blob/master/src/main.rs}{main.rs} $\longrightarrow$
+    \begin{minipage}[t]{7cm}
+        Main file defining RTOS tasks and initialization{.}
+    \end{minipage}..
+    .3 \href{https://github.com/JensMoeslund/gps-miniprojekt/blob/master/src/ms5611.rs}{ms5611.rs} $\longrightarrow$
+    \begin{minipage}[t]{7cm}
+        Library for handling the MS5611 barometer{.}
+    \end{minipage}..
+    .2 \href{https://github.com/JensMoeslund/gps-miniprojekt/blob/master/Cargo.toml}{Cargo.toml} $\longrightarrow$
+    \begin{minipage}[t]{7cm}
+        Compilation and dependency configuration file{.}
+    \end{minipage}..
+    .2 \href{https://github.com/JensMoeslund/gps-miniprojekt/blob/master/memory.x}{memory.x} $\longrightarrow$
+    \begin{minipage}[t]{7cm}
+        Memory layout file for the microcontroller{.}
+    \end{minipage}..
+    .2 \href{https://github.com/JensMoeslund/gps-miniprojekt/blob/master/rust-toolchain.toml}{rust-toolchain.toml} $\longrightarrow$
+    \begin{minipage}[t]{7cm}
+        Rust toolchain configuration file{.}
+    \end{minipage}..
 }
 
 
