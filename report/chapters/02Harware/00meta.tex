@@ -75,7 +75,15 @@ Since the expected maximum altitude of the balloon is around 15 km, the MS5611 i
         \begin{equation}
             P = D1 \cdot SENS - OFF
         \end{equation}
-        where $D1$ is the digital pressure value measured by the sensor, $SENS$ is the sensitivity at the actual temperature, and $OFF$ is the offset at the actual temperature.
+        Where $D1$ is the digital pressure value measured by the sensor, $SENS$ is the sensitivity at the actual temperature, and $OFF$ is the offset at the actual temperature.
+
+        From this pressure, the altitude can be calculated using the Equation~\ref{eq:pressure2altitude}.
+        \begin{equation}
+            h = -\frac{log(\frac{P_m}{P_0}) \cdot T_0 \cdot R_0}{(M \cdot G_0)}
+            \label{eq:pressure2altitude}
+        \end{equation}
+        Where $P_m$ is the measured pressure, $P_0$ is the pressure at sea level, $T_0$ is the temperature at sea level, $R_0$ is the universal gas constant, $M$ is the molar mass of the air, and $G_0$ is the acceleration due to gravity.
+
     \end{enumerate}
     \item Noise
     \begin{enumerate}[(a)]
