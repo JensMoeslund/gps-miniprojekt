@@ -2,6 +2,16 @@
 The software is based on a real time operating system (RTOS).
 The software is divided into different tasks, which are handled by the RTOS.
 
+\section{RTOS}
+The RTOS used in this project is RTIC.
+RTIC is a real-time interrupt-driven concurrency (RTIC) framework for building concurrent applications in Rust.
+
+RTIC is based on the concept of tasks, which are functions that can be executed concurrently.
+Tasks can be hardware tasks, which are triggered by interrupts, or software tasks, which are triggered by the RTOS through the use of interrupts.
+
+RTIC also provides a message queue, which can be used to send messages between tasks.
+The message queue is a FIFO queue, which can be used to send messages of a fixed size between tasks.
+
 \section{Tasks}
 The software is divided into the following tasks:
 \begin{itemize}
