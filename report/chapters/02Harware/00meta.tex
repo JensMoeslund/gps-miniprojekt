@@ -19,8 +19,10 @@ The microcontroller can be seen in Figure~\ref{fig:stm32f446re}.
 
 \section{Barometer}\label{sec:barometer}
 The barometer used in this project is the MS5611.
-The MS5611 is a high-resolution pressure sensor. The purpose of the barometer is to measure the pressure, so an altitude can be calculated.
-The MS5611 can measure pressure from 10 mbar to 1200 mbar, with a resolution of up to 0.012 mbar. %TODO: indsæt kilde
+The MS5611 is a high-resolution pressure sensor.
+The purpose of the barometer is to measure the pressure, so an altitude can be calculated.
+The MS5611 is connected to the microcontroller using the I2C bus, and is polled for data.
+The MS5611 can measure pressure from 10 mbar to 1200 mbar, with a resolution of up to 0.012 mbar~\cite{ms5611}.
 Since the expected maximum altitude of the balloon is around 15 km, the MS5611 is a suitable choice for this project.
 
 \subsection{SSEQ for the MS5611}
@@ -98,6 +100,8 @@ Since the expected maximum altitude of the balloon is around 15 km, the MS5611 i
 \section{GNSS module}\label{sec:gnss-module}
 The GNSS module used in this project is the u-blox NEO-6M.
 This module can recieve signals from GPS, GLONASS, Galileo, and BeiDou satellites.
+The module is connected to the microcontroller using the UART interface.
+The module can output data in the NMEA 183 format, and does so at a set interval.
 This module was chosen because it is the GNSS module used in the student satlab organization, where the project is intended to be used.
 
 \subsection{SSEQ for the NEO-6M}
@@ -138,7 +142,7 @@ This module was chosen because it is the GNSS module used in the student satlab 
     \item Measuring
     \begin{enumerate}[(a)]
         \item What are the sampling frequency and resolution?
-        The maximum navigation update rate is 5 Hz. %TODO: indsæt kilde. datasheet
+        The maximum navigation update rate is 5 Hz~\cite{neo-6m}.
         However, the time it takes to get a fix can be up to 27 seconds, depending on the environment and whether the module is coming from a cold start, warm start, or hot start.
         This is caused by the module needing to get the almanac and ephemeris data from the satellites.
 
