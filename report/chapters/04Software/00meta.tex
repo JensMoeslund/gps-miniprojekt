@@ -1,0 +1,41 @@
+\chapter{Software}\label{ch:system-development}
+The software is based on a real time operating system (RTOS).
+The software is divided into different tasks, which are handled by the RTOS.
+
+\section{RTOS}
+The RTOS used in this project is RTIC.
+RTIC is a real-time interrupt-driven concurrency (RTIC) framework for building concurrent applications in Rust.
+
+RTIC is based on the concept of tasks, which are functions that can be executed concurrently.
+Tasks can be hardware tasks, which are triggered by interrupts, or software tasks, which are triggered by the RTOS through the use of interrupts.
+
+RTIC also provides a message queue, which can be used to send messages between tasks.
+The message queue is a FIFO queue, which can be used to send messages of a fixed size between tasks.
+
+\section{Tasks}
+The software is divided into the following tasks:
+\begin{itemize}
+    \item \textbf{GNSS Sampling Task:} This task is responsible for reading the raw GNSS data and storing it in a buffer.
+    \item \textbf{Barometer Sampling Task:} This task is responsible for sampling the barometer, parsing the data and storing it in a buffer.
+    \item \textbf{NMEA Parsing Task:} This task is responsible for parsing the NMEA data from the GNSS, and storing the parsed data in a buffer.
+    \item \textbf{Kalman Filter Task:} This task is responsible for running the Kalman filter using the data from the GNSS and the barometer.
+\end{itemize}
+
+The GNSS Sampling Task is responsible for reading the raw GNSS data, but since the data is sent over UART, with a certain time interval, the task must be a hardware task, reacting on the interrupt from the UART.
+For every recieved byte, the task will send the byte in a message queue, which the NMEA Parsing Task will read from.
+
+The Barometer Sampling Task is responsible for reading the barometer data.
+The sensor is connected to the I2C bus, and will return the data when requested.
+For this reason, the task will be a software task, polling the sensor at a certain time interval.
+
+The NMEA Parsing Task is responsible for parsing the NMEA data from the GNSS.
+The task will read the data from the message queue, and parse the data.
+The parsed data will be stored in a buffer, which the Kalman Filter Task will read from.
+
+The Kalman Filter Task is responsible for running the Kalman filter.
+It runs with a certain time interval, and reads the data available in the buffer at that time.
+
+
+
+
+%\input{chapters/03Development/01Test}
