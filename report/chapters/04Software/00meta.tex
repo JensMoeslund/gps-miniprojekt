@@ -4,6 +4,7 @@ The software is divided into different tasks, which are handled by the RTOS.
 
 
 \section{File Tree}
+The code can be found on GitHub at \url{https://github.com/JensMoeslund/gps-miniprojekt}.
 The file tree of the software is as follows:
 
 \dirtree{%
@@ -21,8 +22,18 @@ The file tree of the software is as follows:
     .2 \href{https://github.com/JensMoeslund/gps-miniprojekt/blob/master/rust-toolchain.toml}{rust-toolchain.toml}.
 }
 
+\section{External dependencies}\label{sec:external-dependencies}
+The software uses the following external dependencies:
+\begin{itemize}
+    \item \textbf{nalgebra} is a linear algebra library for Rust.
+    \item \textbf{rtic} is a real-time interrupt-driven concurrency (RTIC) framework for building concurrent applications in Rust.
+    \item \textbf{nmea0183} is a library for parsing NMEA 0183 data.
+\end{itemize}
+\subsection{nalgebra}
+The nalgebra library is used for linear algebra operations.%TODO: indsæt kilde
+The library is used for matrix operations, such as matrix multiplication, matrix inversion, and matrix addition.
 
-\section{RTOS}
+\subsection{RTIC}
 The RTOS used in this project is RTIC.%TODO: indsæt kilde til rtic
 RTIC is a real-time interrupt-driven concurrency (RTIC) framework for building concurrent applications in Rust.
 
@@ -34,7 +45,9 @@ The message queue is a FIFO queue, which can be used to send messages of a fixed
 
 RTIC requires the use of an initialization function, which is used to initialize the hardware and the RTOS.
 In the initialization function, the static resources are initialized, and the peripherals are configured.
-
+\subsection{nmea0183}
+The nmea0183 library is used for parsing NMEA 0183 data.
+The library is used to parse the NMEA data from the GNSS module, and extract the relevant information, such as latitude, longitude, altitude, and speed.%TODO: indsæt kilde
 
 \section{Tasks}
 The software is divided into the following tasks:
