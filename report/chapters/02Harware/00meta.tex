@@ -74,11 +74,15 @@ Since the expected maximum altitude of the balloon is around 15 km, the MS5611 i
     \item Noise
     \begin{enumerate}[(a)]
         \item What type of noise to expect, and how noise depends on use and environment?
-        \item For determining noise, how and for how long should we sample?
-    \end{enumerate}
-    \item Testing
-    \begin{enumerate}[(a)]
-        \item Can we stabilize the environment to keep measured parameters constant?
+        There exist several sources of noise in the MS5611.
+        This includes thermal noise and quantization noise.
+        Thermal noise is the noise from the thermal motion of the electrons in the sensor.
+        This noise is proportional to the temperature of the sensor.
+
+        Quantization noise is the noise from the ADC in the sensor.
+        Since the ADC has a limited resolution, there will be some noise in the output signal, since the output cannot be represented exactly.
+        The quantization noise is proportional to the resolution of the ADC.
+        %TODO: ved ikke om det er helt godt det her.
     \end{enumerate}
 \end{enumerate}
 
@@ -149,12 +153,11 @@ This module was chosen because it is the GNSS module used in the student satlab 
     \end{enumerate}
     \item Testing
     \begin{enumerate}[(a)]
-        \item Can we stabilize the environment to keep measured parameters constant? %TODO:
         \item What can we do to get different measurements (covering at least some of the sensor range)? Be creative!
 
         Since it is not feasible to actually put the sensor in a HAB, a way to get different measurements, at least in the latitudinal and longitudinal direction, is to move the sensor, for example by driving around with it ontop of a car.
 
-        Getting different measurements in the altitude direction is more difficult, but could be done by moving the sensor up and down using a crane or ladder.
+        Getting different measurements in the altitude direction is more difficult, but could be done by moving the sensor up and down using a crane, ladder or a tall building.
     \end{enumerate}
 \end{enumerate}
 
