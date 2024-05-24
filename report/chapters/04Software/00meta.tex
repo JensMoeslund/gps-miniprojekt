@@ -2,6 +2,26 @@
 The software is based on a real time operating system (RTOS).
 The software is divided into different tasks, which are handled by the RTOS.
 
+
+\section{File Tree}
+The file tree of the software is as follows:
+
+\dirtree{%
+    .1 gps-miniprojekt/.
+    .2 .cargo/.
+    .3 \href{https://github.com/JensMoeslund/gps-miniprojekt/blob/master/.cargo/config.toml}{config.toml}.
+    .2 src/.
+    .3 \href{https://github.com/JensMoeslund/gps-miniprojekt/blob/master/src/gnss.rs}{gnss.rs}.
+    .3 \href{https://github.com/JensMoeslund/gps-miniprojekt/blob/master/src/kalman.rs}{kalman.rs}.
+    .3 \href{https://github.com/JensMoeslund/gps-miniprojekt/blob/master/src/lib.rs}{lib.rs}.
+    .3 \href{https://github.com/JensMoeslund/gps-miniprojekt/blob/master/src/main.rs}{main.rs}.
+    .3 \href{https://github.com/JensMoeslund/gps-miniprojekt/blob/master/src/ms5611.rs}{ms5611.rs}.
+    .2 \href{https://github.com/JensMoeslund/gps-miniprojekt/blob/master/Cargo.toml}{Cargo.toml}.
+    .2 \href{https://github.com/JensMoeslund/gps-miniprojekt/blob/master/memory.x}{memory.x}.
+    .2 \href{https://github.com/JensMoeslund/gps-miniprojekt/blob/master/rust-toolchain.toml}{rust-toolchain.toml}.
+}
+
+
 \section{RTOS}
 The RTOS used in this project is RTIC.
 RTIC is a real-time interrupt-driven concurrency (RTIC) framework for building concurrent applications in Rust.
@@ -11,6 +31,10 @@ Tasks can be hardware tasks, which are triggered by interrupts, or software task
 
 RTIC also provides a message queue, which can be used to send messages between tasks.
 The message queue is a FIFO queue, which can be used to send messages of a fixed size between tasks.
+
+RTIC requires the use of an initialization function, which is used to initialize the hardware and the RTOS.
+In the initialization function, the static resources are initialized, and the peripherals are configured.
+
 
 \section{Tasks}
 The software is divided into the following tasks:
@@ -34,8 +58,6 @@ The parsed data will be stored in a buffer, which the Kalman Filter Task will re
 
 The Kalman Filter Task is responsible for running the Kalman filter.
 It runs with a certain time interval, and reads the data available in the buffer at that time.
-
-
 
 
 %\input{chapters/03Development/01Test}
