@@ -80,15 +80,9 @@ Since the expected maximum altitude of the balloon is around 15 km, the MS5611 i
     \item Noise
     \begin{enumerate}[(a)]
         \item What type of noise to expect, and how noise depends on use and environment?
-        There exist several sources of noise in the MS5611.
-        This includes thermal noise and quantization noise.
+        Then noise in the barometer can be caused by the temperature of the sensor.
         Thermal noise is the noise from the thermal motion of the electrons in the sensor.
         This noise is proportional to the temperature of the sensor.
-
-        Quantization noise is the noise from the ADC in the sensor.
-        Since the ADC has a limited resolution, there will be some noise in the output signal, since the output cannot be represented exactly.
-        The quantization noise is proportional to the resolution of the ADC.
-        %TODO: ved ikke om det er helt godt det her.
     \end{enumerate}
 \end{enumerate}
 
@@ -124,19 +118,19 @@ This module was chosen because it is the GNSS module used in the student satlab 
         The data is transmitted in ASCII format, and includes information about the satellites in view, the position of the receiver, and the time of the measurement.
         In the NMEA 183 standard, there exists different sentence-types.
         Some include information about the position of the receiver, some include information about the signal to the constellation.
-        The interesting sentences for this project are the GGA, RMC, and GSA sentences, since they include the position of the receiver. %TODO: skriv lige de rigtige pakker.
+        The interesting sentences for this project are the GGA, RMC, and GLL sentences, since they include the position of the receiver.
         The units of the output include the position of the receiver in degrees, minutes, and seconds, the speed of the receiver in knots, and the course of the receiver in degrees.
         Furthermore, it also includes the SNR (Signal to Noise Ratio) of the signal from the satellites in dB.
 
 
         \textbf{Desired signal:}
         The desired signal is the position of the receiver, and the speed and course of the receiver.
-        These can be found in the GGA and RMC sentences.%TODO: tjek rigtige pakker.
+        These can be found in the GGA and RMC sentences.
     \end{enumerate}
     \item Measuring
     \begin{enumerate}[(a)]
         \item What are the sampling frequency and resolution?
-        The maximum navigation update rate is 5 Hz. %TODO: indsæt kilde.
+        The maximum navigation update rate is 5 Hz. %TODO: indsæt kilde. datasheet
         However, the time it takes to get a fix can be up to 27 seconds, depending on the environment and whether the module is coming from a cold start, warm start, or hot start.
         This is caused by the module needing to get the almanac and ephemeris data from the satellites.
 
