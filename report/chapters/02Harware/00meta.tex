@@ -8,7 +8,13 @@ The microcontroller used in this project is the STM32F446RE. The STM32F446RE is 
 The microcontroller has 512 KB of flash memory and 128 KB of RAM.
 The microcontroller has a variety of peripherals, including SPI, I2C, UART, and CAN.
 This particular microcontroller was chosen because it is the microcontroller used in the student satlab organization, where the project is intended to be used.
-%TODO: indsæt evt. billede af microcontrolleren
+The microcontroller can be seen in Figure~\ref{fig:stm32f446re}.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{chapters/02Harware/figures/stm32}
+    \caption{The STM32F446RE microcontroller.}
+    \label{fig:stm32f446re}
+\end{figure}
 
 
 \section{Barometer}\label{sec:barometer}
@@ -50,7 +56,7 @@ Since the expected maximum altitude of the balloon is around 15 km, the MS5611 i
         \item Are measurements linear with the measured property?
 
         No they are not linear, since the resistance of the strain gauge both depends on the strain and the temperature.
-        The sensor therefore also includes a temperature sensor, which can be used to compensate for the temperature dependency of the strain gauge. %TODO: evt. indsæt billede
+        The sensor therefore also includes a temperature sensor, which can be used to compensate for the temperature dependency of the strain gauge.
 
 
 
